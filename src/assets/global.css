@@ -1,0 +1,16 @@
+/* 清除默认样式 */
+* {
+    margin: 0px;
+    padding: 0px;
+}
+a {
+    text-decoration: none;
+}
+
+ul li {
+    list-style: none;
+}
+
+body {
+    background-color: rgb(245, 245, 245);
+}

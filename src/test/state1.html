@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Status Display</title>
+    <style>
+        #editableTable {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        #editableTable th,
+        #editableTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        #editableTable tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+
+        #editableTable tr:hover {
+            background-color: #ddd;
+        }
+
+        #editableTable th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <table id="editableTable">
+        <tr>
+            <th>姓名</th>
+            <th>年龄</th>
+            <th>职业</th>
+        </tr>
+        <tr>
+            <td>张三</td>
+            <td>30</td>
+            <td>工程师</td>
+        </tr>
+        <tr>
+            <td>李四</td>
+            <td>28</td>
+            <td>设计师</td>
+        </tr>
+        <!-- 更多行数据 -->
+    </table>
+
+
+    <script>
+        document.getElementById('editableTable').addEventListener('dblclick', function (e) {
+            var target = e.target;
+            if (target.tagName.toLowerCase() === 'td') {
+                var input = document.createElement('input');
+                input.value = target.innerText;
+                input.onblur = function () {
+                    target.innerText = this.value;
+                };
+                target.innerText = '';
+                target.appendChild(input);
+                input.focus();
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>

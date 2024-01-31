@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Number Contract Status</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 30px auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-box {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .status-box h2 {
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .status {
+            color: #888;
+            margin: 10px 0;
+        }
+
+        .progress {
+            background-color: #e0e0e0;
+            border-radius: 2px;
+            height: 20px;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #4caf50;
+            width: 0%;
+            /* Dynamic based on progress */
+            border-radius: 2px;
+        }
+
+        /* ...之前的样式... */
+        .info-box {
+            text-align: left;
+            margin: 10px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        .info-content {
+            margin-left: 10px;
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .button {
+            padding: 8px 15px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .button:hover {
+            background-color: #45a049;
+        }
+
+        .input-field {
+            padding: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 95%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Random Number Submission Status</h1>
+
+        <div class="status-box">
+            <h2>User A</h2>
+            <div class="info-box">
+                <span class="info-label">Hash:</span>
+                <span class="info-content" id="userA-hash">N/A</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Random Number:</span>
+                <span class="info-content" id="userA-random-number">N/A</span>
+            </div>
+            <button class="button" onclick="editUserARandomNumber()">Edit Random Number</button>
+            <div class="status">Status: Waiting for Action</div>
+            <!-- ...进度条... -->
+            <div class="progress">
+                <div class="progress-bar" style="width: 50%;"></div> <!-- Dynamic Progress -->
+            </div>
+        </div>
+
+        <div class="status-box">
+            <h2>User B</h2>
+            <div class="info-box">
+                <span class="info-label">Hash:</span>
+                <span class="info-content" id="userB-hash">N/A</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Random Number:</span>
+                <span class="info-content" id="userB-random-number">N/A</span>
+            </div>
+            <div class="status">Status: Waiting for Random Number</div>
+            <!-- ...进度条... -->
+            <div class="progress">
+                <div class="progress-bar" style="width: 50%;"></div> <!-- Dynamic Progress -->
+            </div>
+        </div>
+
+        <div class="status-box">
+            <h2>Total Random Number Sum</h2>
+            <div class="info-box">
+                <span class="info-label">Sum:</span>
+                <span class="info-content" id="total-random-sum">N/A</span>
+            </div>
+        </div>
+
+        <!-- JavaScript to update elements dynamically -->
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,28 @@
+import { createRouter, createWebHistory } from "vue-router";
+import Transfer from "../views/Transfer.vue";
+import FairIntegerGen from "../views/FairIntGen.vue";
+import Bridge from "../views/Bridge.vue";
+
+const router = createRouter({
+    history: createWebHistory(import.meta.env.BASE_URL),
+    routes: [
+        {
+            path: "/",
+            redirect: "/authentication",
+        },
+        {
+            path: "/bridge",
+            component: Bridge,
+        },
+        {
+            path: "/transfer",
+            component: Transfer,
+        },
+        {
+            path: "/authentication",
+            component: FairIntegerGen,
+        },
+    ],
+});
+
+export default router;

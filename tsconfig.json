@@ -8,8 +8,4 @@
             "path": "./tsconfig.app.json"
         }
     ]
-    // "compilerOptions": { "module": "ESNext" },
-    // "ts-node": {
-    //     "esm": true
-    // }
 }

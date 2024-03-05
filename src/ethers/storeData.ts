@@ -1,7 +1,7 @@
-import { ethers } from "ethers";
-import { storeDataAddress } from "./contract.json";
-import { storeDataAbi as contractAbi } from "./contractInfo";
-import { provider } from "./provider";
+import { ethers } from 'ethers';
+import { storeDataAddress } from './contract.json';
+import { storeDataAbi as contractAbi } from './contractInfo';
+import { provider } from './provider';
 
 export default class StoreData {
     // 类字段: 实例独有的; 类方法: 实例共享的

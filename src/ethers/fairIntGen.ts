@@ -1,8 +1,8 @@
-import { ethers } from "ethers";
-import { provider } from "./provider";
-import { fairIntGenAddress } from "./contract.json";
-import { fairIntGenAbi as contractAbi } from "./contractInfo";
-import { generateRandomBytes, getHash } from "./util";
+import { ethers } from 'ethers';
+import { provider } from './provider';
+import { fairIntGenAddress } from './contract.json';
+import { fairIntGenAbi as contractAbi } from './contractInfo';
+import { generateRandomBytes, getHash } from './util';
 
 export default class FairIntGen {
     // 类字段: 实例独有的; 类方法: 实例共享的
@@ -32,12 +32,12 @@ export default class FairIntGen {
         // 取hash
         let hash = getHash(ni, tA, tB, ri);
         return {
-            role: "applicant",
+            role: 'applicant',
             randomNum: ni,
             executionTime: tA,
             r: ri,
-            status: "hash已上传",
-            hash,
+            status: 'hash正在上传',
+            hash
         };
     }
 
@@ -46,7 +46,7 @@ export default class FairIntGen {
         let contract = this.contract;
         let gasEstimate = await contract.estimateGas.setReqHash(receiver, mHash);
         let tx = await contract.setReqHash(receiver, mHash, {
-            gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0),
+            gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0)
         });
         await tx.wait();
     }
@@ -56,7 +56,7 @@ export default class FairIntGen {
         let contract = this.contract;
         let gasEstimate = await contract.estimateGas.setResHash(sender, mHash);
         let tx = await contract.setResHash(sender, mHash, {
-            gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0),
+            gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0)
         });
         await tx.wait();
     }
@@ -69,15 +69,15 @@ export default class FairIntGen {
             let gasEstimate = await contract.estimateGas.setReqInfo(receiver, ni, ri);
             // 只有模拟的合约正常执行, 才会进行真正的执行交易
             let tx = await contract.setReqInfo(receiver, ni, ri, {
-                gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0),
+                gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0)
             });
             let receipt = await tx.wait();
             if (receipt && receipt.status == 1) {
                 return true;
             } else return false;
         } catch (error: any) {
-            console.log("error reason:", error.reason);
-            console.log("error:", error);
+            console.log('error reason:', error.reason);
+            console.log('error:', error);
         }
     }
 
@@ -88,15 +88,15 @@ export default class FairIntGen {
             let gasEstimate = await contract.estimateGas.setResInfo(sender, ni, ri);
 
             let tx = await contract.setResInfo(sender, ni, ri, {
-                gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0),
+                gasLimit: (gasEstimate.toNumber() * 1.1).toFixed(0)
             });
             let receipt = await tx.wait();
             if (receipt && receipt.status == 1) {
                 return true;
             } else return false;
         } catch (error: any) {
-            console.log("error reason:", error.reason);
-            console.log("error:", error);
+            console.log('error reason:', error.reason);
+            console.log('error:', error);
         }
     }
 

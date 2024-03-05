@@ -13,7 +13,7 @@
             </div>
             <!-- 展示账号详情 -->
             <div v-if="accountInfo.realNameAccount.address">
-                <div class="uploadButton nav-link hidden">
+                <div class="uploadButton nav-link hide">
                     {{ accountInfo.realNameAccount['address'] }}
                 </div>
                 <div class="moreinfo">
@@ -110,6 +110,7 @@ function handleFileChange(event: Event) {
 .upload {
     position: relative;
     margin-left: auto;
+    width: fit-content; /* 设置父元素宽度为子元素所占用的空间 */
 }
 
 /* 文件上传按钮 */
@@ -133,7 +134,7 @@ function handleFileChange(event: Event) {
     border-radius: 15px;
     z-index: 99;
 }
-.hidden:hover + .moreinfo {
+.hide:hover + .moreinfo {
     display: block;
 }
 

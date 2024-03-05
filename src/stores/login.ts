@@ -1,10 +1,12 @@
-import { defineStore } from "pinia";
-import { ref, computed, reactive, readonly } from "vue";
-import { ethers } from "ethers";
-import { Buffer } from "buffer";
-import createKeccakHash from "keccak";
-import socket from "@/socket";
-import { getAuthString } from "@/api";
+import { defineStore } from 'pinia';
+import { ref, computed, reactive, readonly } from 'vue';
+import { ethers } from 'ethers';
+import { Buffer } from 'buffer';
+import createKeccakHash from 'keccak';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
+import socket from '@/socket';
+import { getAuthString } from '@/api';
 
 // 定义嵌套类型
 interface Account {
@@ -28,7 +30,7 @@ interface RandomInfo {
     myRandom: number[];
     otherRandom: number[];
 }
-export const useLoginStore = defineStore("login", () => {
+export const useLoginStore = defineStore('login', () => {
     // state
     const chainLength = 3;
     const accountInfo: AccountInfo = reactive({
@@ -36,14 +38,14 @@ export const useLoginStore = defineStore("login", () => {
         anonymousAccount: {} as Account,
         accounts: [],
         selectedNum: [],
-        selectedAccount: [],
+        selectedAccount: []
     });
-    const validatorAccount = "0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba";
+    const validatorAccount = '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba';
     const sendInfo: SendInfo = reactive({
         r: [],
         b: [],
         hashForward: [],
-        hashBackward: [],
+        hashBackward: []
     });
 
     // 登录：随机选择账户, 发送socket登录
@@ -95,9 +97,11 @@ export const useLoginStore = defineStore("login", () => {
 
     // 对任意个数的参数取hash
     function keccak256(...args: string[]) {
-        let hash = createKeccakHash("keccak256");
+        const hash = sha256.create();
         for (let arg of args) hash.update(arg.toString());
-        return hash.digest("hex");
+        const result = toHex(hash.digest());
+        console.log(result);
+        return result;
     }
     // socket登录:
     async function socketLogin(loginAccunt: Account[]) {
@@ -106,7 +110,7 @@ export const useLoginStore = defineStore("login", () => {
             let authString = (await getAuthString(address)).message;
             let wallet = new ethers.Wallet(key);
             let signedAuthString = await wallet.signMessage(authString);
-            socket.emit("join", { address, signedAuthString });
+            socket.emit('join', { address, signedAuthString });
         }
     }
 
@@ -116,12 +120,12 @@ export const useLoginStore = defineStore("login", () => {
         if (window.crypto && window.crypto.getRandomValues) {
             window.crypto.getRandomValues(randomArray);
         } else {
-            throw new Error("浏览器不支持crypto.getRandomValues()");
+            throw new Error('浏览器不支持crypto.getRandomValues()');
         }
         // 将uint8array转化为16进制字符串
         // let hexString = [...randomArray].map((x) => x.toString(16).padStart(2, '0')).join('');
-        let hexString = Buffer.from(randomArray).toString("hex");
-        return "0x" + hexString;
+        let hexString = Buffer.from(randomArray).toString('hex');
+        return '0x' + hexString;
     }
 
     // 退出登录

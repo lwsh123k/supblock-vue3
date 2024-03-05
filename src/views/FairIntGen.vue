@@ -113,14 +113,15 @@ const currentStep = ref(0); // 当前正在和谁交互
 async function uploadHash() {
     // 使用选择的账号连接合约
     let { key, address: addressA } = accountInfo.selectedAccount[currentStep.value];
-    let addressB = this.validatorAccount;
+    let addressB = validatorAccount;
     // 生成随机数并上传hash
-    let instance = this.fiContractInteract;
+    let instance = fiContractInteract;
     instance.setKey(key);
-    let randomObj = await instance.generateRandon(addressB); //暂时为验证者账号
+    let randomObj = await instance.generateRandon(addressA); //暂时为验证者账号
     console.log(randomObj);
-    this.datas[this.currentStep].splice(0, 1, randomObj);
+    datas[currentStep.value].splice(0, 1, randomObj);
     await instance.setReqHash(addressB, randomObj.hash);
+    datas[currentStep.value][0].status = 'hash已上传';
 }
 // 使用第几个账号, 和谁交互
 function getRelayInfo(current: number) {

@@ -4,62 +4,137 @@ import { fairIntGenAddress, storeDataAddress } from './contract.json';
 import { fairIntGenAbi, storeDataAbi } from './contractInfo';
 
 const fairIntGen = new ethers.Contract(fairIntGenAddress, fairIntGenAbi, provider);
-// 存储定时器id, 方便清除定时
-const reqTimeOutId: NodeJS.Timeout[] = [];
-const resTimeOutId: NodeJS.Timeout[] = [];
 
 // 请求者使用, 监听响应者hash上传事件(type = 0, 请求者; type = 1, 响应者)
-export async function listenResHash(addressA: string, addressB: string, timeout: number = 30000 + 10000) {
-    // 每次调用之前清空所有的监听和定时器
-    clearAllListen();
+type HashResult = {
+    addressA: string;
+    addressB: string;
+    type: number;
+    infoHashB: string;
+    uploadTime: string;
+    index: string;
+};
+export async function listenResHash(
+    addressA: string,
+    addressB: string,
+    timeout: number = 30000 + 10000
+): Promise<HashResult> {
     return new Promise((resolve, reject) => {
-        let filter = fairIntGen.filters.UploadHash(addressA, addressB, 1);
+        let filter = fairIntGen.filters.UploadHash(addressB, addressA, 1);
         let timeoutId = setTimeout(() => {
             // 如果30s + 10s没有监听到对方上传hash, 需要移除对ni ri的监听, 移除ni ri超时监听
             fairIntGen.removeAllListeners(filter);
-            reject('responder not upload');
+            reject('not upload hash');
         }, timeout);
 
         // 监听部分
-        fairIntGen.once(filter, async (addressA, addressB, type, infoHashB) => {
+        fairIntGen.once(filter, async (addressB, addressA, type, infoHashB, uploadTime, index) => {
             clearTimeout(timeoutId);
-            resolve([addressA, addressB, type, infoHashB]);
+            // 属性名都会自动转化为字符串
+            resolve({
+                addressA,
+                addressB,
+                type,
+                infoHashB: infoHashB.toHexString(),
+                uploadTime: uploadTime.toString(),
+                index: index.toString()
+            });
         });
     });
 }
 
-// 请求者使用, 监听响应者ni ri上传事件(type = 0, 请求者; type = 1, 响应者)
-export async function listenResNum(reqAddress: string, resAddress: string, timeout: number = 2 * (30000 + 10000)) {
-    return new Promise((resolve, reject) => {
-        let resFilter = fairIntGen.filters.ResInfoUpload(reqAddress, resAddress, 1);
-        let timeoutId = setTimeout(async () => {
+// 可以停止的promise
+type NumResult = { from: string; to: string; type: number; ni: string; ri: string; t: string; uploadTime: string };
+export function stopableListenResNum(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 2 * (30000 + 10000)
+): {
+    p: Promise<NumResult>;
+    rejectAndCleanup: (reason?: any) => void;
+} {
+    // 定时监听
+    let timeoutId: NodeJS.Timeout;
+    let resFilter = fairIntGen.filters.UpLoadNum(resAddress, reqAddress, 1);
+    let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
+    const p = new Promise<NumResult>((resolve, reject) => {
+        rejectFunc = reject;
+        timeoutId = setTimeout(async () => {
             fairIntGen.removeAllListeners(resFilter); // 如果没有监听到(超时), 则移除事件监听器
-            reject();
+            reject(new Error('not upload random num'));
         }, timeout);
-        fairIntGen.once(resFilter, async (from, to, type, state, ni, ri, t) => {
+        fairIntGen.once(resFilter, async (from, to, type, ni, ri, t, uploadTime) => {
             clearTimeout(timeoutId);
-            resolve([from, to, type, state, ni, ri, t]);
+            resolve({
+                from: from,
+                to: to,
+                type: type,
+                ni: ni.toHexString(),
+                ri: ri.toHexString(),
+                t: t.toHexString(),
+                uploadTime: uploadTime.toString()
+            });
         });
     });
+
+    // 使用promise1拒绝promise2
+    const rejectAndCleanup = (reason: string) => {
+        clearTimeout(timeoutId);
+        fairIntGen.removeAllListeners(resFilter);
+        rejectFunc(reason);
+    };
+    return { p, rejectAndCleanup };
 }
 
 // 响应者使用：监听请求者ni ri上传事件(source区分是请求者(=0)还是响应者(=1))
-export async function listenReqNum(reqAddress: string, resAddress: string, timeout: number = 30000 + 10000) {
-    clearAllListen();
+export async function listenReqNum(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 30000 + 10000
+): Promise<NumResult> {
     return new Promise((resolve, reject) => {
-        let filter = fairIntGen.filters.ReqInfoUpload(reqAddress, resAddress, 0);
+        let filter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 0);
         let timeoutId = setTimeout(async () => {
             fairIntGen.removeAllListeners(filter); // 如果没有监听到(超时), 则移除事件监听器
-            reject();
+            reject(new Error('not upload random num'));
         }, timeout);
-        fairIntGen.once(filter, async (from, to, type, state, ni, ri, t) => {
+        fairIntGen.once(filter, async (from, to, type, ni, ri, t, uploadTime) => {
             clearTimeout(timeoutId);
-            resolve([from, to, type, state, ni, ri, t]);
+            resolve({
+                from: from,
+                to: to,
+                type: type,
+                ni: ni.toHexString(),
+                ri: ri.toHexString(),
+                t: t.toHexString(),
+                uploadTime: uploadTime.toString()
+            });
         });
     });
 }
 
-// 监听重新上传事件（放弃，最终选择使用socket实现）////////////////////////未实现///////////////////
+// =====================================         not used         ==============================================
+
+// 请求者使用, 监听响应者ni ri上传事件(type = 0, 请求者; type = 1, 响应者)
+export async function listenResNum(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 2 * (30000 + 10000)
+): Promise<NumResult> {
+    return new Promise((resolve, reject) => {
+        let resFilter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 1);
+        let timeoutId = setTimeout(async () => {
+            fairIntGen.removeAllListeners(resFilter); // 如果没有监听到(超时), 则移除事件监听器
+            reject(new Error('not upload random num'));
+        }, timeout);
+        fairIntGen.once(resFilter, async (from, to, type, state, ni, ri, t) => {
+            clearTimeout(timeoutId);
+            // resolve({ from, to, type, state, ni, ri, t });
+        });
+    });
+}
+
+// 监听重新上传事件（放弃，最终选择使用socket实现, 不能确定对方什么时候上传）////////////////////////未实现///////////////////
 export async function listenReupload(reqAddress: string, resAddress: string, ni: number, ri: string) {
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.ResHashUpload(reqAddress, resAddress);
@@ -81,25 +156,30 @@ export async function listenReupload(reqAddress: string, resAddress: string, ni:
         let timeoutId = setTimeout(() => {
             fairIntGen.removeAllListeners();
             if (listenResult === false) {
-                fairIntGen.removeAllListeners('ResInfoUpload'); // 如果30s + 10s没有监听到对方上传hash, 需要移除对ni ri的监听
-                // 移除ni ri超时监听
-                // console.log(reqTimeOutId.length);
-                clearTimeout(reqTimeOutId.shift());
+                fairIntGen.removeAllListeners('UpLoadNum'); // 如果30s + 10s没有监听到对方上传hash, 需要移除对ni ri的监听
                 resolve([isReupload, listenResult]);
             }
         }, timeout);
     });
 }
 
-// 当开始新一轮的fair integer generation时, 清空所有监听
-export async function clearAllListen() {
-    fairIntGen.removeAllListeners();
-    reqTimeOutId.forEach((timeid) => {
-        clearTimeout(timeid);
+// 不区分type监听随机数, 这样就能同时知道自己和对方的状态
+// 可以解决: 对方上传完成, 还要用promise实现等待自己上传完成 的功能
+// 请求者使用, 监听响应者ni ri上传事件(type = 0, 请求者; type = 1, 响应者)
+export async function listenNum(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 2 * (30000 + 10000)
+): Promise<NumResult> {
+    return new Promise((resolve, reject) => {
+        let resFilter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 1);
+        let timeoutId = setTimeout(async () => {
+            fairIntGen.removeAllListeners(resFilter); // 如果没有监听到(超时), 则移除事件监听器
+            reject(new Error('not upload random num'));
+        }, timeout);
+        fairIntGen.once(resFilter, async (from, to, type, state, ni, ri, t) => {
+            clearTimeout(timeoutId);
+            // resolve({ from, to, type, state, ni, ri, t });
+        });
     });
-    resTimeOutId.forEach((timeid) => {
-        clearTimeout(timeid);
-    });
-    reqTimeOutId.splice(0, reqTimeOutId.length);
-    resTimeOutId.splice(0, resTimeOutId.length);
 }

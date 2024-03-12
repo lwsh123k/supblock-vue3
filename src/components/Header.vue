@@ -4,6 +4,7 @@
         <router-link to="/authentication" class="nav-link">Authentication</router-link>
         <router-link to="/bridge" class="nav-link" exact>Bridge</router-link>
         <router-link to="/transfer" class="nav-link">Transfer</router-link>
+        <router-link to="/statistic" class="nav-link">Statistic</router-link>
 
         <div class="upload">
             <!-- 文件上传按钮 -->

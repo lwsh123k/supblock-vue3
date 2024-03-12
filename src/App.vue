@@ -3,14 +3,15 @@
     <Header></Header>
 
     <!-- 路由匹配到的组件将渲染在这里 -->
-    <RouterView />
-    <!-- <FairIntGenCard></FairIntGenCard> -->
+    <!-- 下面代码等价于<RouterView /> -->
+    <router-view v-slot="{ Component }"> </router-view>
 </template>
 
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router';
 import Header from '@/components/Header.vue';
 import FairIntGenCard from './views/FairIntGenCard.vue';
+import Statistic from './views/Statistic.vue';
 </script>
 
 <style>

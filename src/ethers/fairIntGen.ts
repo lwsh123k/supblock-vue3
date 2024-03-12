@@ -1,15 +1,18 @@
 import { ethers } from 'ethers';
 import { provider } from './provider';
-import { fairIntGenAddress } from './contract.json';
+// import { fairIntGenAddress } from './contract.json';
 import { fairIntGenAbi as contractAbi } from './contractInfo';
 import { generateRandomBytes, getHash } from './util';
+import { getContractAddress } from '@/api';
 
 export default class FairIntGen {
     // 类字段: 实例独有的; 类方法: 实例共享的
-    contract;
+    // !含义: 非null, undefined断言
+    contract!: ethers.Contract;
 
-    // 构造只读合约
-    constructor() {
+    async init() {
+        // 避免每次都要设置地址, 所以从服务器获取地址
+        let fairIntGenAddress = (await getContractAddress()).fairIntGenAddress;
         this.contract = new ethers.Contract(fairIntGenAddress, contractAbi, provider);
     }
 

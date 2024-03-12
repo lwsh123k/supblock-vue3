@@ -1,6 +1,6 @@
 <template>
     <div class="my-10">
-        <h1 class="my-5 text-center text-3xl">Fair Integer Generation Status</h1>
+        <h1 class="my-5 text-center text-3xl">Fair Integer Generation Request</h1>
 
         <!-- 进度条 -->
         <el-steps :active="activeStep" finish-status="success">
@@ -23,6 +23,7 @@
                 </el-table-column>
                 <el-table-column prop="executionTime" label="execution time" placeholder=""></el-table-column>
                 <el-table-column prop="r" label="r"></el-table-column>
+                <el-table-column prop="hash" label="hash"></el-table-column>
                 <el-table-column prop="status" label="status"></el-table-column>
             </el-table>
             <!-- <div class="absolute -bottom-16 right-0">
@@ -36,7 +37,9 @@
             <el-button @click="prev" :disabled="activeStep === 0" size="large">上一步</el-button>
             <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large">下一步</el-button>
             <div class="float-right">
-                <el-button type="primary" @click="uploadHash" class="mr-5" size="large">生成随机数并上传hash</el-button>
+                <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
+                    >生成随机数并上传hash</el-button
+                >
                 <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
             </div>
         </div>
@@ -45,52 +48,27 @@
 
 <script setup lang="ts">
 import FiContractInteract from '@/ethers/fairIntGen';
+import { listenReqNum, listenResHash, stopableListenResNum } from '@/ethers/timedListen';
 import { useLoginStore } from '@/stores/login';
 import { storeToRefs } from 'pinia';
-import { reactive, ref } from 'vue';
+import { onBeforeMount, onMounted, reactive, ref, watch, watchEffect } from 'vue';
 
+// 定义一个接口来描述表格中的每一项
+interface DataItem {
+    role: string;
+    randomNum: number | string;
+    executionTime: number | string;
+    r: string;
+    hash: string;
+    status: string;
+}
+let datas = reactive<DataItem[][]>([]); // 表格数据项, 在挂载之前赋值
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
 const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
 
 const totalStep = chainLength + 3;
 const fiContractInteract = new FiContractInteract();
-const datas = reactive([
-    [
-        {
-            role: 'appliacnt',
-            randomNum: Math.floor(Math.random() * 100),
-            executionTime: '5',
-            r: '11111111111445ad',
-            status: '成功'
-        },
-        {
-            role: 'relay',
-            randomNum: Math.floor(Math.random() * 100),
-            executionTime: '5',
-            r: '1111111111111254',
-            status: '成功'
-        }
-    ],
-    [
-        {
-            role: '用户',
-            randomNum: Math.floor(Math.random() * 100),
-            executionTime: '2024-01-15 10:05:00',
-            r: 3,
-            status: '失败'
-        }
-    ],
-    [
-        {
-            role: '访客',
-            randomNum: Math.floor(Math.random() * 100),
-            executionTime: '2024-01-15 10:10:00',
-            r: 4,
-            status: '进行中'
-        }
-    ]
-]);
 
 // 页数跳转
 const activeStep = ref(0);
@@ -110,8 +88,8 @@ function prev() {
 
 // hash上传
 const currentStep = ref(0); // 当前正在和谁交互
-async function uploadHash() {
-    // 使用选择的账号连接合约
+async function uploadHashAndListen() {
+    // 使用选择的账号连接合约, 上传hash
     let { key, address: addressA } = accountInfo.selectedAccount[currentStep.value];
     let addressB = validatorAccount;
     // 生成随机数并上传hash
@@ -122,7 +100,59 @@ async function uploadHash() {
     datas[currentStep.value].splice(0, 1, randomObj);
     await instance.setReqHash(addressB, randomObj.hash);
     datas[currentStep.value][0].status = 'hash已上传';
+
+    // 使用封装的函数
+    const hashPromise = listenResHash(addressA, addressB);
+    const { p: numPromise, rejectAndCleanup } = stopableListenResNum(addressA, addressB);
+
+    // 同时监听hash和随机数
+    hashPromise
+        .then((resHash) => {
+            datas[currentStep.value][1].hash = resHash.infoHashB;
+            datas[currentStep.value][1].status = 'hash已上传';
+        })
+        .catch((error) => {
+            // hashPromise失败，就停止numPromise
+            datas[currentStep.value][1].status = '未在30s内上传hash';
+            console.log(error);
+            rejectAndCleanup('hash not upload');
+        });
+
+    numPromise
+        .then((resNum) => {
+            let { ni, ri, t } = resNum;
+            datas[currentStep.value][1].randomNum = ni;
+            datas[currentStep.value][1].r = ri;
+            datas[currentStep.value][1].executionTime = t;
+            datas[currentStep.value][1].status = '随机数已上传';
+            console.log('Promise2 resolved successfully.');
+        })
+        .catch((error) => {
+            // 超时
+            if (error === 'not upload random num') {
+                datas[currentStep.value][1].status = error;
+                // 重传
+
+                // 给下一个relay发消息
+            }
+            console.log(error);
+        });
 }
+
+// 随机数上传
+// 随机数上传
+async function uploadRandomNum() {}
+
+// 监听status改变
+// watchEffect自动跟踪ref变量
+watchEffect(async () => {
+    for (let i = 0; i < datas.length; i++) {
+        if (datas[i][0].status === '随机数已上传' && datas[i][1].status === '随机数已上传') {
+            // 随机数检查
+            // 判断是否重传
+        }
+    }
+});
 // 使用第几个账号, 和谁交互
 function getRelayInfo(current: number) {
     let addressB;
@@ -137,8 +167,35 @@ function getRelayInfo(current: number) {
     };
 }
 
-// 随机数上传
-async function uploadRandomNum() {}
+// 使用watch监听state的改变, 如果state显示双方都上传完成, 就给下一个relay发信息
+
+// 挂载之前, 初始胡表格数值
+onBeforeMount(() => {
+    for (let i = 0; i < 6; i++) {
+        datas.push([
+            {
+                role: 'appliacnt',
+                randomNum: '---',
+                executionTime: '---',
+                r: '---',
+                hash: '---',
+                status: '---'
+            },
+            {
+                role: 'relay',
+                randomNum: '---',
+                executionTime: '---',
+                r: '---',
+                hash: '---',
+                status: '---'
+            }
+        ]);
+    }
+});
+
+onMounted(async () => {
+    await fiContractInteract.init();
+});
 </script>
 
 <style scoped>

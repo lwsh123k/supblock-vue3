@@ -1,9 +1,10 @@
+// 为避免每次都需要更改, 使用网络请求获取合约地址
 export const fairIntGenAddr = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
 export const storeDataAddr = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
 export const fairIntGenAbi = [
     'constructor(uint256 _hashTime, uint256 _numTime)',
-    'event ReuploadNum(address indexed from, address indexed to, uint8 types, uint256 ni, uint256 ri, uint256 uploadTime)',
+    'event ReuploadNum(address indexed from, address indexed to, uint8 types, uint256 ni, uint256 ri, bytes32 originalHash, uint256 uploadTime)',
     'event UpLoadNum(address indexed from, address indexed to, uint8 indexed types, uint256 ni, uint256 ri, uint256 t, uint256 uploadTime)',
     'event UploadHash(address indexed from, address indexed to, uint8 indexed types, bytes32 infoHash, uint256 uploadTime, uint256 index)',
     'function UnifiedInspection(address to, uint256 index, uint8 types) view returns (bool result)',

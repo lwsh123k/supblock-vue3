@@ -103,6 +103,10 @@ export default class FairIntGen {
         }
     }
 
+    // 检查正确性
+
+    // 重新上传
+
     // 请求者调用: 获得执行次数
     async getReqExecuteTime(receiver: string) {
         let contract = this.contract;

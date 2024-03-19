@@ -103,7 +103,7 @@ async function uploadHashAndListen() {
 
     // 使用封装的函数
     const hashPromise = listenResHash(addressA, addressB);
-    const { p: numPromise, rejectAndCleanup } = stopableListenResNum(addressA, addressB);
+    const { p: numPromise, rejectAndCleanup } = await stopableListenResNum(addressA, addressB);
 
     // 同时监听hash和随机数
     hashPromise
@@ -132,7 +132,7 @@ async function uploadHashAndListen() {
             if (error === 'not upload random num') {
                 datas[currentStep.value][1].status = error;
                 // 重传
-
+                let instance = fiContractInteract;
                 // 给下一个relay发消息
             }
             console.log(error);

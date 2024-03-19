@@ -1,9 +1,4 @@
-import { ethers } from 'ethers';
-import { provider } from './provider';
-import { fairIntGenAddress, storeDataAddress } from './contract.json';
-import { fairIntGenAbi, storeDataAbi } from './contractInfo';
-
-const fairIntGen = new ethers.Contract(fairIntGenAddress, fairIntGenAbi, provider);
+import { getFairIntGen } from './contract';
 
 // 请求者使用, 监听响应者hash上传事件(type = 0, 请求者; type = 1, 响应者)
 type HashResult = {
@@ -19,6 +14,7 @@ export async function listenResHash(
     addressB: string,
     timeout: number = 30000 + 10000
 ): Promise<HashResult> {
+    const fairIntGen = await getFairIntGen();
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.UploadHash(addressB, addressA, 1);
         let timeoutId = setTimeout(() => {
@@ -35,7 +31,7 @@ export async function listenResHash(
                 addressA,
                 addressB,
                 type,
-                infoHashB: infoHashB.toHexString(),
+                infoHashB: infoHashB,
                 uploadTime: uploadTime.toString(),
                 index: index.toString()
             });
@@ -45,14 +41,12 @@ export async function listenResHash(
 
 // 可以停止的promise
 type NumResult = { from: string; to: string; type: number; ni: string; ri: string; t: string; uploadTime: string };
-export function stopableListenResNum(
+export async function stopableListenResNum(
     reqAddress: string,
     resAddress: string,
     timeout: number = 2 * (30000 + 10000)
-): {
-    p: Promise<NumResult>;
-    rejectAndCleanup: (reason?: any) => void;
-} {
+): Promise<{ p: Promise<NumResult>; rejectAndCleanup: (reason?: any) => void }> {
+    const fairIntGen = await getFairIntGen();
     // 定时监听
     let timeoutId: NodeJS.Timeout;
     let resFilter = fairIntGen.filters.UpLoadNum(resAddress, reqAddress, 1);
@@ -92,6 +86,7 @@ export async function listenReqNum(
     resAddress: string,
     timeout: number = 30000 + 10000
 ): Promise<NumResult> {
+    const fairIntGen = await getFairIntGen();
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 0);
         let timeoutId = setTimeout(async () => {
@@ -121,6 +116,7 @@ export async function listenResNum(
     resAddress: string,
     timeout: number = 2 * (30000 + 10000)
 ): Promise<NumResult> {
+    const fairIntGen = await getFairIntGen();
     return new Promise((resolve, reject) => {
         let resFilter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 1);
         let timeoutId = setTimeout(async () => {
@@ -136,8 +132,9 @@ export async function listenResNum(
 
 // 监听重新上传事件（放弃，最终选择使用socket实现, 不能确定对方什么时候上传）////////////////////////未实现///////////////////
 export async function listenReupload(reqAddress: string, resAddress: string, ni: number, ri: string) {
+    const fairIntGen = await getFairIntGen();
     return new Promise((resolve, reject) => {
-        let filter = fairIntGen.filters.ResHashUpload(reqAddress, resAddress);
+        let filter = fairIntGen.filters.ReuploadNum(reqAddress, resAddress);
         let listenResult = false;
         let isReupload = false;
         fairIntGen
@@ -171,6 +168,7 @@ export async function listenNum(
     resAddress: string,
     timeout: number = 2 * (30000 + 10000)
 ): Promise<NumResult> {
+    const fairIntGen = await getFairIntGen();
     return new Promise((resolve, reject) => {
         let resFilter = fairIntGen.filters.UpLoadNum(reqAddress, resAddress, 1);
         let timeoutId = setTimeout(async () => {

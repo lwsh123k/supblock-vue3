@@ -4,7 +4,7 @@
 
         <!-- 表格展示 -->
         <div class="table-container mt-30 relative">
-            <el-table :data="receivedData[activeStep]">
+            <el-table :data="combinedData[activeStep]">
                 <el-table-column prop="role" label="role">
                     <template #default="{ row }">
                         <span class="">{{ row.role }}</span>
@@ -21,10 +21,6 @@
                 <el-table-column prop="hash" label="hash"></el-table-column>
                 <el-table-column prop="status" label="status"></el-table-column>
             </el-table>
-            <!-- <div class="absolute -bottom-16 right-0">
-                <el-button type="primary" @click="uploadHash" class="mr-5" size="large">生成随机数并上传hash</el-button>
-                <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
-            </div> -->
         </div>
 
         <!-- 控制按钮 -->
@@ -40,28 +36,36 @@
 </template>
 
 <script setup lang="ts">
+import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import FiContractInteract from '@/ethers/fairIntGen';
+import { provider } from '@/ethers/provider';
 import { listenReqNum, listenResHash } from '@/ethers/timedListen';
-import { useLoginStore } from '@/stores/login';
+import { getRandom } from '@/ethers/util';
+import { useEventListenStore } from '@/stores/modules/eventListen';
+import { useLoginStore } from '@/stores/modules/login';
+import { Wallet } from 'ethers';
+import { addAbortListener } from 'events';
+import { write } from 'fs';
 import { storeToRefs } from 'pinia';
-import { onBeforeMount, reactive, ref } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watchEffect } from 'vue';
 
-// 定义一个接口来描述表格中的每一项
-interface DataItem {
-    role: string;
-    randomNum: number | string;
-    executionTime: number | string;
-    r: string;
-    hash: string;
-    status: string;
-}
-let receivedData = reactive<DataItem[][]>([]); // 表格数据项, 在挂载之前赋值
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
 const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
-
+const { dataToApplicant, dataFromApplicant } = useEventListenStore();
 const totalStep = chainLength + 3;
-const fiContractInteract = new FiContractInteract();
+
+// 使用计算属性合并
+const combinedData = computed(() => {
+    // 确保在 a 和 b 的长度之间取较小的一个，以防数组长度不等
+    let minLength = Math.min(dataFromApplicant.length, dataToApplicant.length);
+    let combined = [];
+    for (let i = 0; i < minLength; i++) {
+        combined.push([dataFromApplicant[i], dataToApplicant[i]]);
+    }
+    activeStep.value = minLength - 1;
+    return combined;
+});
 
 // 切换当前正在和哪个applicant进行通话
 const activeStep = ref(0);
@@ -69,68 +73,117 @@ function toggleApplicant() {
     // do something
 }
 
-// hash上传
-const currentStep = ref(0); // 当前正在和谁交互
+// 响应者上传hash, 并且监听对方随机数上传
 async function uploadHashAndListen() {
-    // 使用选择的账号连接合约, 上传hash
-    let { key, address: addressA } = accountInfo.selectedAccount[currentStep.value];
-    let addressB = validatorAccount;
-    // 生成随机数并上传hash
-    let instance = fiContractInteract;
-    instance.setKey(key);
-    let randomObj = await instance.generateRandon(addressA); //暂时为验证者账号
-    console.log(randomObj);
-    receivedData[currentStep.value].splice(0, 1, randomObj);
-    await instance.setReqHash(addressB, randomObj.hash);
-    receivedData[currentStep.value][0].status = 'hash已上传';
+    let step = activeStep.value;
+    let { key: privateKey, address: addressB } = accountInfo.anonymousAccount;
+    let addressA = dataFromApplicant[step].from;
 
-    // 监听对方, 只需要监听随机数
+    // 创建合约实例
+    const readOnlyFair = await getFairIntGen();
+    const wallet = new Wallet(privateKey, provider);
+    let writeFair = readOnlyFair.connect(wallet);
+
+    await getCurrentBlockTime();
+
+    // 生成随机数
+    console.log(addressA);
+    let result = await writeFair.getResExecuteTime(addressA);
+    let tA = result[0].toNumber();
+    let tB = result[1].toNumber();
+    let dataIndex = result[2].toNumber(); // 插入位置的下标
+    let { ni, ri, hash } = getRandom(tA, tB);
+    dataFromApplicant[step].executionTime = tA;
+    dataToApplicant[step].executionTime = tB;
+    dataToApplicant[step].hash = hash;
+    dataToApplicant[step].r = ri;
+    dataToApplicant[step].randomNum = ni;
+    dataToApplicant[step].index = dataIndex;
+    dataToApplicant[step].status = 'hash正在上传';
+
+    //上传hash
+    await writeFair.setResHash(addressA, hash);
+    dataToApplicant[step].status = 'hash已上传';
+
+    // 定时监听随机数
     try {
-        let resNum = await listenReqNum(addressA, addressB);
-        let { ni, ri, t } = resNum;
-        receivedData[currentStep.value][0].randomNum = ni;
-        receivedData[currentStep.value][0].r = ri;
-        receivedData[currentStep.value][0].executionTime = t;
-        receivedData[currentStep.value][0].status = '随机数已上传';
-    } catch (reason) {
-        if (reason === 'not upload hash') receivedData[currentStep.value][1].status = reason;
-        else if (reason === 'not upload random num') {
-            receivedData[currentStep.value][1].status = reason;
-            // state=4, 请求者正确, 响应者超时
-        }
+        let { from: addressA, to: addressB, index } = dataFromApplicant[step];
+        let result = await listenReqNum(addressA, addressB);
+        console.log('监听到了随机数', result);
+        dataFromApplicant[step].randomNum = result.ni;
+        dataFromApplicant[step].r = result.ri;
+        dataFromApplicant[step].executionTime = result.t;
+        dataFromApplicant[step].status = '随机数已上传';
+    } catch (error) {
+        console.log('没有监听到', error);
+        // 重传
+        dataFromApplicant[step].status = '未在30s内上传随机数';
+        let { ni, ri, hash } = getRandom(tA, tB);
+        let index = dataFromApplicant[step].index;
+        await writeFair.reuploadNum(addressA, index, 1, ni, ri);
+        dataToApplicant[step].randomNum += '/' + ni;
+        dataToApplicant[step].r += '/' + ri;
+        dataToApplicant[step].status = '随机数已重新上传';
+        // 给下一个relay发消息
+    }
+}
 
-        console.log(reason);
+// 随机数上传
+async function uploadRandomNum() {
+    try {
+        let step = activeStep.value;
+        let { key: privateKey } = accountInfo.anonymousAccount;
+
+        // 创建合约实例
+        const readOnlyFair = await getFairIntGen();
+        const wallet = new Wallet(privateKey, provider);
+        let writeFair = readOnlyFair.connect(wallet);
+        let addressA = dataFromApplicant[step].from;
+        await writeFair.setResInfo(
+            addressA,
+            dataToApplicant[step].randomNum as number,
+            dataToApplicant[step].r as string
+        );
+        dataToApplicant[step].status = '随机数已上传';
+    } catch (error) {
+        console.log(error);
     }
 }
 
 // 使用watch监听state的改变, 如果state显示双方都上传完成, 就给下一个relay发信息
-
-// 挂载之前, 初始胡表格数值
-onBeforeMount(() => {
-    for (let i = 0; i < 6; i++) {
-        receivedData.push([
-            {
-                role: 'appliacnt',
-                randomNum: '---',
-                executionTime: '---',
-                r: '...',
-                hash: '---',
-                status: '---'
-            },
-            {
-                role: 'relay',
-                randomNum: '---',
-                executionTime: '---',
-                r: '---',
-                hash: '---',
-                status: '---'
+watchEffect(async () => {
+    for (let i = 0; i < dataFromApplicant.length; i++) {
+        if (
+            dataFromApplicant[i].status === '随机数已上传' &&
+            dataToApplicant[i] &&
+            dataToApplicant[i].status === '随机数已上传'
+        ) {
+            try {
+                // 创建合约实例
+                let { key: privateKey } = accountInfo.anonymousAccount;
+                const readOnlyFair = await getFairIntGen();
+                const wallet = new Wallet(privateKey, provider);
+                let writeFair = readOnlyFair.connect(wallet);
+                // 随机数检查
+                let { from: addressA, index } = dataFromApplicant[i];
+                let res = await writeFair.UnifiedInspection(addressA, index, 1);
+                if (res === false) {
+                    console.log('随机数错误');
+                    // 重传
+                    let from = dataFromApplicant[i].from;
+                    let [tA, tB, index] = await writeFair.getResExecuteTime(from);
+                    let { ni, ri, hash } = getRandom(tA.toNumber(), tB.toNumber());
+                    await writeFair.reuploadNum(from, index, 1, ni, ri);
+                    dataToApplicant[i].randomNum += '/' + ni;
+                    dataToApplicant[i].r = ri;
+                    dataToApplicant[i].status = '随机数已重新上传';
+                } else console.log('随机数正确 ');
+            } catch (error) {
+                console.log(error);
             }
-        ]);
+        }
     }
 });
-
-// 随机数上传
-async function uploadRandomNum() {}
 </script>
 
 <style scoped>
@@ -171,3 +224,4 @@ async function uploadRandomNum() {}
     margin: 10px;
 } */
 </style>
+@/stores/modules/login

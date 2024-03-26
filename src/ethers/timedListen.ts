@@ -40,7 +40,7 @@ export async function listenResHash(
 }
 
 // 可以停止的promise
-type NumResult = { from: string; to: string; type: number; ni: string; ri: string; t: string; uploadTime: string };
+type NumResult = { from: string; to: string; type: number; ni: number; ri: string; t: number; uploadTime: string };
 export async function stopableListenResNum(
     reqAddress: string,
     resAddress: string,
@@ -63,9 +63,9 @@ export async function stopableListenResNum(
                 from: from,
                 to: to,
                 type: type,
-                ni: ni.toHexString(),
+                ni: ni.toNumber(),
                 ri: ri.toHexString(),
-                t: t.toHexString(),
+                t: t.toNumber(),
                 uploadTime: uploadTime.toString()
             });
         });
@@ -99,9 +99,9 @@ export async function listenReqNum(
                 from: from,
                 to: to,
                 type: type,
-                ni: ni.toHexString(),
+                ni: ni.toNumber(),
                 ri: ri.toHexString(),
-                t: t.toHexString(),
+                t: t.toNumber(),
                 uploadTime: uploadTime.toString()
             });
         });

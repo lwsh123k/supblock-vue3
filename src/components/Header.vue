@@ -45,8 +45,9 @@
 
 <script setup lang="ts">
 import { ref, type Ref } from 'vue';
-import { useLoginStore } from '@/stores/login';
+import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
+import { useEventListenStore } from '@/stores/modules/eventListen';
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
@@ -73,10 +74,13 @@ function handleFileChange(event: Event) {
             const lines = fileContent.split('\r\n');
             lines.pop();
             try {
+                // 处理登录账号格式
                 if (![1, 2, 102].includes(lines.length)) throw new Error('上传文件格式错误');
                 if (lines.length === 1) lines[1] = lines[0];
                 await loginStore.processAccount(lines);
                 // 开启监听
+                const { backendListen } = useEventListenStore();
+                backendListen(accountInfo.value.realNameAccount.address);
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();
             } catch (e) {
@@ -153,3 +157,4 @@ function handleFileChange(event: Event) {
     color: #e8e7e3;
 }
 </style>
+@/stores/modules/login

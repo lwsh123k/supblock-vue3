@@ -30,8 +30,8 @@ export const getAccountInfo = async (index: number) => {
 // 获得合约地址
 // 获得账户信息
 interface contractAddress {
-    storeDataAddress: string;
-    fairIntGenAddress: string;
+    StoreData: string;
+    FairInteger: string;
 }
 export const getContractAddress = async () => {
     let contractAddress = await requests.get<any, contractAddress>('/getContractAddress');

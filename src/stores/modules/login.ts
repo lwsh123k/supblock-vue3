@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { ref, computed, reactive, readonly } from 'vue';
 import { ethers } from 'ethers';
 import { Buffer } from 'buffer';
-import createKeccakHash from 'keccak';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
 import socket from '@/socket';

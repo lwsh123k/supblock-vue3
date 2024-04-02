@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed, reactive, readonly } from 'vue';
-import { listenReqNum, listenResNum } from '@/ethers/timedListen';
 import { getFairIntGen, getStoreData } from '@/ethers/contract';
-import { getRandom } from '@/ethers/util';
 import { Wallet } from 'ethers';
 import { useLoginStore } from '@/stores/modules/login';
 
@@ -17,7 +15,8 @@ export const useEventListenStore = defineStore('eventListen', () => {
         from: string;
         to: string;
         randomNum: number | string | null;
-        executionTime: number | string | null;
+        tA: number;
+        tB: number;
         r: string | null;
         hash: string;
         status: string;
@@ -45,20 +44,21 @@ export const useEventListenStore = defineStore('eventListen', () => {
         const fairIntGen = await getFairIntGen();
         const wallet = new Wallet(privateKey);
         let writeFair = fairIntGen.connect(wallet);
-        let hashFilter = fairIntGen.filters.UploadHash(null, myAddress, 0);
+        let hashFilter = fairIntGen.filters.ReqHashUpload(null, myAddress);
         // 监听请求者上传hash
-        fairIntGen.on(hashFilter, async (from, to, type, hash, uploadTime, index) => {
-            console.log('监听到了hash, ', from, to, type, hash, uploadTime, index);
+        fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
+            console.log('监听到了hash, ', from, to, infoHash, tA, tB, uploadTime, index);
             let len = dataFromApplicant.length;
             dataFromApplicant.push({
                 role: 'applicant',
                 from: from,
                 to: to,
                 randomNum: null,
-                executionTime: null,
+                tA: tA.toNumber(),
+                tB: tB.toNumber(),
                 r: null,
                 status: 'hash已上传',
-                hash: hash,
+                hash: infoHash,
                 index: index.toNumber()
             });
             dataToApplicant.push({

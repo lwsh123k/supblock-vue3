@@ -13,12 +13,20 @@
                 <el-table-column prop="randomNum" label="randon num">
                     <template #default="scope">
                         <!-- 条件为false时就正常显示文本 -->
-                        <input type="text" v-if="scope.row.role === 'appliacnt'" v-model="scope.row.randomNum" />
+                        <input type="text" v-if="scope.row.role === 'relay'" v-model="scope.row.randomNum" />
                     </template>
                 </el-table-column>
                 <el-table-column prop="executionTime" label="execution time" placeholder=""></el-table-column>
-                <el-table-column prop="r" label="r"></el-table-column>
-                <el-table-column prop="hash" label="hash"></el-table-column>
+                <el-table-column prop="r" label="r">
+                    <template #default="scope">
+                        {{ processLongString(scope.row.r) }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="hash" label="hash">
+                    <template #default="scope">
+                        {{ processLongString(scope.row.hash) }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="status" label="status"></el-table-column>
             </el-table>
         </div>
@@ -37,16 +45,12 @@
 
 <script setup lang="ts">
 import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
-import FiContractInteract from '@/ethers/fairIntGen';
 import { provider } from '@/ethers/provider';
 import { listenReqNum, listenResHash } from '@/ethers/timedListen';
 import { getRandom } from '@/ethers/util';
 import { useEventListenStore } from '@/stores/modules/eventListen';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
-import { addAbortListener } from 'events';
-import { write } from 'fs';
-import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, reactive, ref, watchEffect } from 'vue';
 
 const popoverVisible = ref(true);
@@ -73,6 +77,16 @@ function toggleApplicant() {
     // do something
 }
 
+// 处理长字符串
+function processLongString(str: string | null, startLength = 4, endLength = 3) {
+    if (str === null) return;
+    const maxLength = startLength + endLength + 3; // 加上3是因为省略号也占用长度
+    if (str.length > maxLength) {
+        return str.substring(0, startLength) + '...' + str.substring(str.length - endLength);
+    }
+    return str;
+}
+
 // 响应者上传hash, 并且监听对方随机数上传
 async function uploadHashAndListen() {
     let step = activeStep.value;
@@ -87,13 +101,8 @@ async function uploadHashAndListen() {
     await getCurrentBlockTime();
 
     // 生成随机数
-    console.log(addressA);
-    let result = await writeFair.getResExecuteTime(addressA);
-    let tA = result[0].toNumber();
-    let tB = result[1].toNumber();
-    let dataIndex = result[2].toNumber(); // 插入位置的下标
+    let { tA, tB, index: dataIndex } = dataFromApplicant[step];
     let { ni, ri, hash } = getRandom(tA, tB);
-    dataFromApplicant[step].executionTime = tA;
     dataToApplicant[step].executionTime = tB;
     dataToApplicant[step].hash = hash;
     dataToApplicant[step].r = ri;
@@ -107,12 +116,11 @@ async function uploadHashAndListen() {
 
     // 定时监听随机数
     try {
-        let { from: addressA, to: addressB, index } = dataFromApplicant[step];
         let result = await listenReqNum(addressA, addressB);
         console.log('监听到了随机数', result);
         dataFromApplicant[step].randomNum = result.ni;
         dataFromApplicant[step].r = result.ri;
-        dataFromApplicant[step].executionTime = result.t;
+        dataFromApplicant[step].tA = result.t;
         dataFromApplicant[step].status = '随机数已上传';
     } catch (error) {
         console.log('没有监听到', error);
@@ -120,6 +128,7 @@ async function uploadHashAndListen() {
         dataFromApplicant[step].status = '未在30s内上传随机数';
         let { ni, ri, hash } = getRandom(tA, tB);
         let index = dataFromApplicant[step].index;
+        console.log(addressA, index);
         await writeFair.reuploadNum(addressA, index, 1, ni, ri);
         dataToApplicant[step].randomNum += '/' + ni;
         dataToApplicant[step].r += '/' + ri;
@@ -165,15 +174,13 @@ watchEffect(async () => {
                 const wallet = new Wallet(privateKey, provider);
                 let writeFair = readOnlyFair.connect(wallet);
                 // 随机数检查
-                let { from: addressA, index } = dataFromApplicant[i];
+                let { from: addressA, index, tA, tB } = dataFromApplicant[i];
                 let res = await writeFair.UnifiedInspection(addressA, index, 1);
                 if (res === false) {
                     console.log('随机数错误');
                     // 重传
-                    let from = dataFromApplicant[i].from;
-                    let [tA, tB, index] = await writeFair.getResExecuteTime(from);
-                    let { ni, ri, hash } = getRandom(tA.toNumber(), tB.toNumber());
-                    await writeFair.reuploadNum(from, index, 1, ni, ri);
+                    let { ni, ri, hash } = getRandom(tA, tB);
+                    await writeFair.reuploadNum(addressA, index, 1, ni, ri);
                     dataToApplicant[i].randomNum += '/' + ni;
                     dataToApplicant[i].r = ri;
                     dataToApplicant[i].status = '随机数已重新上传';

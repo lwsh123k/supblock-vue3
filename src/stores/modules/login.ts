@@ -6,6 +6,7 @@ import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
 import socket from '@/socket';
 import { getAuthString } from '@/api';
+import { useSocketStore } from './socket';
 
 // 定义嵌套类型
 interface Account {
@@ -109,7 +110,8 @@ export const useLoginStore = defineStore('login', () => {
             let authString = (await getAuthString(address)).message;
             let wallet = new ethers.Wallet(key);
             let signedAuthString = await wallet.signMessage(authString);
-            socket.emit('join', { address, signedAuthString });
+            let { bindEvents } = useSocketStore();
+            bindEvents(address, signedAuthString);
         }
     }
 

@@ -22,8 +22,16 @@
                     </template>
                 </el-table-column>
                 <el-table-column prop="executionTime" label="execution time" placeholder=""></el-table-column>
-                <el-table-column prop="r" label="r"></el-table-column>
-                <el-table-column prop="hash" label="hash"></el-table-column>
+                <el-table-column prop="r" label="r">
+                    <template #default="scope">
+                        {{ processLongString(scope.row.r) }}
+                    </template>
+                </el-table-column>
+                <el-table-column prop="hash" label="hash">
+                    <template #default="scope">
+                        {{ processLongString(scope.row.hash) }}
+                    </template>
+                </el-table-column>
                 <el-table-column prop="status" label="status"></el-table-column>
             </el-table>
             <!-- <div class="absolute -bottom-16 right-0">
@@ -48,10 +56,9 @@
 
 <script setup lang="ts">
 import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
-import FiContractInteract from '@/ethers/fairIntGen';
 import { provider } from '@/ethers/provider';
-import { listenReqNum, listenResHash, stopableListenResNum } from '@/ethers/timedListen';
-import { generateRandomBytes, getHash, getRandom } from '@/ethers/util';
+import { listenResHash, stopableListenResNum } from '@/ethers/timedListen';
+import { getRandom } from '@/ethers/util';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
@@ -88,6 +95,15 @@ function prev() {
     if (activeStep.value > 0) {
         activeStep.value--;
     }
+}
+
+// 处理长字符串
+function processLongString(str: string, startLength = 5, endLength = 3) {
+    const maxLength = startLength + endLength + 3; // 加上3是因为省略号也占用长度
+    if (str.length > maxLength) {
+        return str.substring(0, startLength) + '...' + str.substring(str.length - endLength);
+    }
+    return str;
 }
 
 // hash上传
@@ -187,7 +203,7 @@ watchEffect(async () => {
             let { key: privateKey, address: addressA } = accountInfo.selectedAccount[currentStep.value];
             let addressB = validatorAccount;
             const readOnlyFair = await getFairIntGen();
-            const wallet = new Wallet(privateKey);
+            const wallet = new Wallet(privateKey, provider);
             let writeFair = readOnlyFair.connect(wallet);
             // 随机数检查
             let result = await readOnlyFair.UnifiedInspection(addressB, datas[i][0].dataIndex as number, 0);
@@ -199,9 +215,7 @@ watchEffect(async () => {
                     datas[i][1].executionTime as number
                 );
                 await writeFair.reuploadNum(addressB, datas[i][0].dataIndex as number, 0, ni, ri);
-                if (typeof datas[currentStep.value][0].randomNum === 'string') {
-                    datas[currentStep.value][0].randomNum += ' / ' + ni;
-                }
+                datas[currentStep.value][0].randomNum += ' / ' + ni;
                 datas[currentStep.value][0].status = '随机数已重新上传';
             } else console.log('随机数正确 ');
         }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
-import { socket } from '@/socket';
 import { reactive, ref } from 'vue';
+import { io } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 
 export const useSocketStore = defineStore('socket', () => {
     interface Item {
@@ -10,8 +11,21 @@ export const useSocketStore = defineStore('socket', () => {
     }
     let todos = reactive<Item[]>([]);
 
-    function bindEvents() {
-        // my listen
+    let socketMap = new Map();
+
+    function bindEvents(address: string, signedAuthString: string) {
+        // initiate socket
+        let socket = io('http://localhost:3000', {
+            reconnectionAttempts: 5,
+            reconnectionDelay: 5000,
+            query: {
+                address,
+                signedAuthString
+            }
+        });
+        socketMap.set(address, socket);
+
+        // listen event
         socket.on('connect', () => {
             console.log('连接成功');
         });
@@ -43,4 +57,6 @@ export const useSocketStore = defineStore('socket', () => {
             }
         });
     }
+
+    return { socketMap, bindEvents };
 });

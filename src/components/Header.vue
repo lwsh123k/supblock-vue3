@@ -10,7 +10,12 @@
             <!-- 文件上传按钮 -->
             <div v-show="!accountInfo.realNameAccount.address">
                 <div @click="triggerFileInput" class="uploadButton nav-link">Connect Wallet</div>
-                <input type="file" ref="fileInput" @change="handleFileChange" style="display: none" />
+                <input
+                    type="file"
+                    ref="fileInput"
+                    @change="handleFileChange"
+                    id="privateKeyFile"
+                    style="display: none" />
             </div>
             <!-- 展示账号详情 -->
             <div v-if="accountInfo.realNameAccount.address">

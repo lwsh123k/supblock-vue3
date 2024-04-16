@@ -73,6 +73,9 @@ interface DataItem {
     hash: string;
     status: string;
     dataIndex: number | null;
+    beforeChange?: number | string; // 检查自己是否上传了错误的随机数
+    isUpload?: boolean;
+    isReupload?: boolean;
 }
 let datas = reactive<DataItem[][]>([]); // 表格数据项, 在挂载之前赋值
 const popoverVisible = ref(true);
@@ -107,17 +110,19 @@ function processLongString(str: string, startLength = 5, endLength = 3) {
 }
 
 // hash上传
-const currentStep = ref(0); // 当前正在和谁交互
+const currentStep = ref(0); // 当前和哪一个relay生成随机数
 async function uploadHashAndListen() {
+    let step = currentStep.value;
+    resetCurrentStep(step);
     // 选择使用哪个账号上传hash, 和谁交互
-    let { key: privateKey, address: addressA } = accountInfo.selectedAccount[currentStep.value];
+    let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
     let addressB = validatorAccount;
     console.log(addressB);
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();
-    const wallet = new Wallet(privateKey, provider);
-    let writeFair = readOnlyFair.connect(wallet);
+    let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
 
+    console.log(writeFair.provider);
     await getCurrentBlockTime();
 
     // 生成随机数
@@ -126,17 +131,21 @@ async function uploadHashAndListen() {
     let tB = result[1].toNumber();
     let dataIndex = result[2].toNumber(); // 插入位置的下标
     let { ni, ri, hash } = getRandom(tA, tB);
-    datas[currentStep.value][0].executionTime = tA;
-    datas[currentStep.value][1].executionTime = tB;
-    datas[currentStep.value][0].hash = hash;
-    datas[currentStep.value][0].r = ri;
-    datas[currentStep.value][0].randomNum = ni;
-    datas[currentStep.value][0].dataIndex = dataIndex;
-    datas[currentStep.value][0].status = 'hash正在上传';
+    datas[step][0].executionTime = tA;
+    datas[step][1].executionTime = tB;
+    datas[step][0].hash = hash;
+    datas[step][0].r = ri;
+    datas[step][0].randomNum = ni;
+    datas[step][0].dataIndex = dataIndex;
+    datas[step][0].status = 'hash正在上传';
+    // 提前保存值, 检查自身正确性
+    datas[step][0].beforeChange = ni;
+    datas[step][0].isUpload = false;
+    datas[step][0].isReupload = false;
 
     //上传hash
     await writeFair.setReqHash(addressB, hash);
-    datas[currentStep.value][0].status = 'hash已上传';
+    datas[step][0].status = 'hash已上传';
 
     // 开启监听
     // 使用封装的函数
@@ -146,12 +155,13 @@ async function uploadHashAndListen() {
     // 同时监听hash和随机数
     hashPromise
         .then((resHash) => {
-            datas[currentStep.value][1].hash = resHash.infoHashB;
-            datas[currentStep.value][1].status = 'hash已上传';
+            datas[step][1].hash = resHash.infoHashB;
+            datas[step][1].status = 'hash已上传';
+            // ??
         })
         .catch((error) => {
             // hashPromise失败，就停止numPromise
-            datas[currentStep.value][1].status = '未在30s内上传hash';
+            datas[step][1].status = '未在30s内上传hash';
             console.log(error);
             rejectAndCleanup('hash not upload');
         });
@@ -159,21 +169,27 @@ async function uploadHashAndListen() {
     numPromise
         .then((resNum) => {
             let { ni, ri, t } = resNum;
-            datas[currentStep.value][1].randomNum = ni;
-            datas[currentStep.value][1].r = ri;
-            datas[currentStep.value][1].executionTime = t;
-            datas[currentStep.value][1].status = '随机数已上传';
+            datas[step][1].randomNum = ni;
+            datas[step][1].r = ri;
+            datas[step][1].executionTime = t;
+            datas[step][1].status = '随机数已上传';
             console.log('Promise2 resolved successfully.');
         })
         .catch(async (error: Error) => {
-            // 超时
-            if (error.message === 'not upload random num') {
-                datas[currentStep.value][1].status = '未在30s内上传随机数';
+            // 超时 && 自己已上传 && 上传的是对的
+            if (
+                error.message === 'not upload random num' &&
+                datas[step][0].isUpload === true &&
+                datas[step][0].beforeChange === datas[step][0].randomNum
+            ) {
+                datas[step][1].status = '未在30s内上传随机数';
                 // 重传
                 let { ni, ri, hash } = getRandom(tA, tB);
                 await writeFair.reuploadNum(addressB, dataIndex, 0, ni, ri);
-                datas[currentStep.value][0].randomNum += ' / ' + ni;
-                datas[currentStep.value][0].status = '随机数已重新上传';
+                datas[step][0].randomNum += ' / ' + ni;
+                // 更改状态
+                datas[step][0].status = '随机数已重新上传';
+                datas[step][0].isReupload = true;
                 // 给下一个relay发消息
             }
         });
@@ -191,22 +207,32 @@ async function uploadRandomNum() {
     const wallet = new Wallet(privateKey, provider);
     let writeFair = readOnlyFair.connect(wallet);
     await writeFair.setReqInfo(addressB, datas[step][0].randomNum, datas[step][0].r);
+
+    // 更改状态
     datas[step][0].status = '随机数已上传';
+    datas[step][0].isUpload = true;
 }
 
 // 监听status改变
 // watchEffect自动跟踪ref变量
 watchEffect(async () => {
     for (let i = 0; i < datas.length; i++) {
-        if (datas[i][0].status === '随机数已上传' && datas[i][1].status === '随机数已上传') {
+        // 自己上传了 && 自己上传的是对的 && 之前没有重传过
+        if (
+            datas[i][0].status === '随机数已上传' &&
+            datas[i][1].status === '随机数已上传' &&
+            datas[i][0].isUpload === true &&
+            datas[i][0].beforeChange === datas[i][0].randomNum &&
+            datas[i][0].isReupload === false
+        ) {
             // 创建合约实例
-            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[currentStep.value];
+            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[i];
             let addressB = validatorAccount;
             const readOnlyFair = await getFairIntGen();
             const wallet = new Wallet(privateKey, provider);
             let writeFair = readOnlyFair.connect(wallet);
-            // 随机数检查
-            let result = await readOnlyFair.UnifiedInspection(addressB, datas[i][0].dataIndex as number, 0);
+            // 随机数检查: 对方上传正确 || 已重新上传 返回true
+            let result = await readOnlyFair.UnifiedInspection(addressA, addressB, datas[i][0].dataIndex as number, 0);
             // 判断是否重传
             if (result === false) {
                 console.log('随机数错误');
@@ -215,8 +241,10 @@ watchEffect(async () => {
                     datas[i][1].executionTime as number
                 );
                 await writeFair.reuploadNum(addressB, datas[i][0].dataIndex as number, 0, ni, ri);
-                datas[currentStep.value][0].randomNum += ' / ' + ni;
-                datas[currentStep.value][0].status = '随机数已重新上传';
+                // 更改状态
+                datas[i][0].randomNum += ' / ' + ni;
+                datas[i][0].status = '随机数已重新上传';
+                datas[i][0].isReupload = true;
             } else console.log('随机数正确 ');
         }
     }
@@ -235,34 +263,35 @@ function getRelayInfo(current: number) {
     };
 }
 
-// 使用watch监听state的改变, 如果state显示双方都上传完成, 就给下一个relay发信息
-
 // 挂载之前, 初始胡表格数值
 onBeforeMount(() => {
     for (let i = 0; i < 6; i++) {
-        datas.push([
-            {
-                role: 'appliacnt',
-                randomNum: '',
-                executionTime: '',
-                r: '',
-                hash: '',
-                dataIndex: null,
-                status: ''
-            },
-            {
-                role: 'relay',
-                randomNum: '',
-                executionTime: '',
-                r: '',
-                hash: '',
-                dataIndex: null,
-                status: ''
-            }
-        ]);
+        resetCurrentStep(i);
     }
 });
 
+function resetCurrentStep(current: number) {
+    datas[current] = [
+        {
+            role: 'appliacnt',
+            randomNum: '',
+            executionTime: '',
+            r: '',
+            hash: '',
+            dataIndex: null,
+            status: ''
+        },
+        {
+            role: 'relay',
+            randomNum: '',
+            executionTime: '',
+            r: '',
+            hash: '',
+            dataIndex: null,
+            status: ''
+        }
+    ];
+}
 onMounted(async () => {});
 </script>
 

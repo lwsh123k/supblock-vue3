@@ -17,6 +17,7 @@ export const useEventListenStore = defineStore('eventListen', () => {
         randomNum: number | string | null;
         tA: number;
         tB: number;
+        executionTime: number | string | null;
         r: string | null;
         hash: string;
         status: string;
@@ -30,6 +31,9 @@ export const useEventListenStore = defineStore('eventListen', () => {
         hash: string;
         status: string;
         index: number | null;
+        beforeChange?: number | string; // 检查自己是否上传了错误的随机数
+        isUpload?: boolean;
+        isReupload?: boolean;
     }
     interface RelayData {}
     const dataFromApplicant = reactive<AppToRelayData[]>([]); // 记录随机数请求
@@ -54,6 +58,7 @@ export const useEventListenStore = defineStore('eventListen', () => {
                 from: from,
                 to: to,
                 randomNum: null,
+                executionTime: tA.toNumber(),
                 tA: tA.toNumber(),
                 tB: tB.toNumber(),
                 r: null,
@@ -64,7 +69,7 @@ export const useEventListenStore = defineStore('eventListen', () => {
             dataToApplicant.push({
                 role: 'relay',
                 randomNum: null,
-                executionTime: null,
+                executionTime: tB.toString(),
                 r: null,
                 hash: '',
                 status: '',

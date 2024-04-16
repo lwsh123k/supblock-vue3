@@ -51,12 +51,15 @@ import { getRandom } from '@/ethers/util';
 import { useEventListenStore } from '@/stores/modules/eventListen';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
-import { computed, onBeforeMount, reactive, ref, watchEffect } from 'vue';
+import { storeToRefs } from 'pinia';
+import { computed, onBeforeMount, reactive, ref, toRef, toRefs, watchEffect } from 'vue';
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
 const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
-const { dataToApplicant, dataFromApplicant } = useEventListenStore();
+const eventListenStore = useEventListenStore();
+const dataToApplicant = eventListenStore.dataToApplicant; // 取引用, 保持reactive
+const dataFromApplicant = eventListenStore.dataFromApplicant;
 const totalStep = chainLength + 3;
 
 // 使用计算属性合并
@@ -109,6 +112,10 @@ async function uploadHashAndListen() {
     dataToApplicant[step].randomNum = ni;
     dataToApplicant[step].index = dataIndex;
     dataToApplicant[step].status = 'hash正在上传';
+    // 提前保存值, 检查自身正确性
+    dataToApplicant[step].beforeChange = ni;
+    dataToApplicant[step].isUpload = false;
+    dataToApplicant[step].isReupload = false;
 
     //上传hash
     await writeFair.setResHash(addressA, hash);
@@ -119,21 +126,30 @@ async function uploadHashAndListen() {
         let result = await listenReqNum(addressA, addressB);
         console.log('监听到了随机数', result);
         dataFromApplicant[step].randomNum = result.ni;
+        console.log(dataFromApplicant[step].randomNum);
         dataFromApplicant[step].r = result.ri;
         dataFromApplicant[step].tA = result.t;
         dataFromApplicant[step].status = '随机数已上传';
     } catch (error) {
         console.log('没有监听到', error);
-        // 重传
-        dataFromApplicant[step].status = '未在30s内上传随机数';
-        let { ni, ri, hash } = getRandom(tA, tB);
-        let index = dataFromApplicant[step].index;
-        console.log(addressA, index);
-        await writeFair.reuploadNum(addressA, index, 1, ni, ri);
-        dataToApplicant[step].randomNum += '/' + ni;
-        dataToApplicant[step].r += '/' + ri;
-        dataToApplicant[step].status = '随机数已重新上传';
-        // 给下一个relay发消息
+        // 超时 && 自己已上传 && 上传的是对的
+        if (
+            dataToApplicant[step].isUpload === true &&
+            dataToApplicant[step].beforeChange === dataToApplicant[step].randomNum
+        ) {
+            // 重传
+            dataFromApplicant[step].status = '未在30s内上传随机数';
+            let { ni, ri, hash } = getRandom(tA, tB);
+            let index = dataFromApplicant[step].index;
+            console.log(addressA, index);
+            await writeFair.reuploadNum(addressA, index, 1, ni, ri);
+            // 改变状态
+            dataToApplicant[step].randomNum += '/' + ni;
+            dataToApplicant[step].r += '/' + ri;
+            dataToApplicant[step].status = '随机数已重新上传';
+            dataToApplicant[step].isReupload = true;
+            // 给下一个relay发消息
+        }
     }
 }
 
@@ -153,7 +169,10 @@ async function uploadRandomNum() {
             dataToApplicant[step].randomNum as number,
             dataToApplicant[step].r as string
         );
+
+        // 改变状态
         dataToApplicant[step].status = '随机数已上传';
+        dataToApplicant[step].isUpload = true;
     } catch (error) {
         console.log(error);
     }
@@ -162,28 +181,34 @@ async function uploadRandomNum() {
 // 使用watch监听state的改变, 如果state显示双方都上传完成, 就给下一个relay发信息
 watchEffect(async () => {
     for (let i = 0; i < dataFromApplicant.length; i++) {
+        // 自己上传了 && 自己上传的是对的 && 之前没有重传过
         if (
             dataFromApplicant[i].status === '随机数已上传' &&
-            dataToApplicant[i] &&
-            dataToApplicant[i].status === '随机数已上传'
+            dataToApplicant[i].status === '随机数已上传' &&
+            dataToApplicant[i].isUpload === true &&
+            dataToApplicant[i].beforeChange === dataToApplicant[i].randomNum &&
+            dataToApplicant[i].isReupload === false
         ) {
+            console.log(11111111111111);
             try {
                 // 创建合约实例
-                let { key: privateKey } = accountInfo.anonymousAccount;
+                let { key: privateKey, address: myAddress } = accountInfo.anonymousAccount;
                 const readOnlyFair = await getFairIntGen();
                 const wallet = new Wallet(privateKey, provider);
                 let writeFair = readOnlyFair.connect(wallet);
                 // 随机数检查
                 let { from: addressA, index, tA, tB } = dataFromApplicant[i];
-                let res = await writeFair.UnifiedInspection(addressA, index, 1);
+                let res = await writeFair.UnifiedInspection(addressA, myAddress, index, 1);
                 if (res === false) {
                     console.log('随机数错误');
                     // 重传
                     let { ni, ri, hash } = getRandom(tA, tB);
                     await writeFair.reuploadNum(addressA, index, 1, ni, ri);
+                    // 改变状态
                     dataToApplicant[i].randomNum += '/' + ni;
                     dataToApplicant[i].r = ri;
                     dataToApplicant[i].status = '随机数已重新上传';
+                    dataToApplicant[i].isReupload = true;
                 } else console.log('随机数正确 ');
             } catch (error) {
                 console.log(error);

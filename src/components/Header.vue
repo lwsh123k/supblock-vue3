@@ -68,7 +68,7 @@ function triggerFileInput() {
 
 function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const file = target.files![0]; // 非空断言??
+    const file = target.files?.[0]; // 可选链
     if (!file) {
         return;
     }
@@ -83,6 +83,9 @@ function handleFileChange(event: Event) {
                 if (![1, 2, 102].includes(lines.length)) throw new Error('上传文件格式错误');
                 if (lines.length === 1) lines[1] = lines[0];
                 await loginStore.processAccount(lines);
+                // 更改网页title
+                console.log(file.name);
+                document.title = file.name.replace('account', '').replace('.txt', '');
                 // 开启监听
                 const { backendListen } = useEventListenStore();
                 backendListen(accountInfo.value.realNameAccount.address);

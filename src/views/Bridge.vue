@@ -93,6 +93,9 @@ function processLongString(str: string | null, startLength = 4, endLength = 3) {
 // 响应者上传hash, 并且监听对方随机数上传
 async function uploadHashAndListen() {
     let step = activeStep.value;
+    // 额外判断, 防止误点, 判断对方是否已经上传hash 或者 已经上传过随机数
+    if (!dataFromApplicant[step]?.hash || dataToApplicant[step]?.isUpload) return;
+
     let { key: privateKey, address: addressB } = accountInfo.anonymousAccount;
     let addressA = dataFromApplicant[step].from;
 
@@ -171,7 +174,8 @@ async function uploadRandomNum() {
         );
 
         // 改变状态
-        dataToApplicant[step].status = '随机数已上传';
+        dataToApplicant[step].status =
+            dataToApplicant[step].beforeChange === dataToApplicant[step].randomNum ? '随机数已上传' : '随机数错误';
         dataToApplicant[step].isUpload = true;
     } catch (error) {
         console.log(error);

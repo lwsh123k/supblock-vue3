@@ -198,6 +198,8 @@ async function uploadHashAndListen() {
 // 随机数上传
 async function uploadRandomNum() {
     let step = currentStep.value;
+    // 已经上传就返回
+
     // 选择使用哪个账号上传hash, 和谁交互
     let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
     let addressB = validatorAccount;
@@ -209,7 +211,7 @@ async function uploadRandomNum() {
     await writeFair.setReqInfo(addressB, datas[step][0].randomNum, datas[step][0].r);
 
     // 更改状态
-    datas[step][0].status = '随机数已上传';
+    datas[step][0].status = datas[step][0].beforeChange === datas[step][0].randomNum ? '随机数已上传' : '随机数错误';
     datas[step][0].isUpload = true;
 }
 

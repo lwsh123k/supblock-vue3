@@ -52,7 +52,7 @@
 import { ref, type Ref } from 'vue';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
-import { useEventListenStore } from '@/stores/modules/eventListen';
+import { useEventListenStore } from '@/stores/modules/relayEventListen';
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
@@ -165,4 +165,4 @@ function handleFileChange(event: Event) {
     color: #e8e7e3;
 }
 </style>
-@/stores/modules/login
+@/stores/modules/login @/stores/modules/relayEventListen

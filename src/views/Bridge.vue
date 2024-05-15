@@ -48,7 +48,7 @@ import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
 import { listenReqNum, listenResHash } from '@/ethers/timedListen';
 import { getRandom } from '@/ethers/util';
-import { useEventListenStore } from '@/stores/modules/eventListen';
+import { useEventListenStore } from '@/stores/modules/relayEventListen';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
@@ -260,4 +260,4 @@ watchEffect(async () => {
     margin: 10px;
 } */
 </style>
-@/stores/modules/login
+@/stores/modules/login @/stores/modules/relayEventListen

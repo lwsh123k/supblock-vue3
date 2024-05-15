@@ -107,3 +107,45 @@ export async function listenReqNum(
         });
     });
 }
+
+// relay重新上传的监听, 确定下一个随机数
+//  从hash上传就开始监听: 时间: 在原来的基础上+30s   可以由hash上传停止  num正确可以停止
+type ReuploadResult = { from: string; to: string; ni: number; ri: string; hashB: string; uploadTime: string };
+export async function stopableListenResReupload(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 2 * (30000 + 10000) + 30000
+): Promise<{ p: Promise<ReuploadResult>; rejectAndCleanup: (reason?: any) => void }> {
+    const fairIntGen = await getFairIntGen();
+    // 定时监听
+    let timeoutId: NodeJS.Timeout;
+    let resFilter = fairIntGen.filters.ResReuploadNum(resAddress, reqAddress);
+    let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
+    const p = new Promise<ReuploadResult>((resolve, reject) => {
+        rejectFunc = reject;
+        timeoutId = setTimeout(async () => {
+            fairIntGen.removeAllListeners(resFilter); // 如果没有监听到(超时), 则移除事件监听器
+            reject(new Error('not upload random num'));
+        }, timeout);
+        fairIntGen.once(resFilter, async (from, to, ni, ri, numHash, uploadTime) => {
+            clearTimeout(timeoutId);
+            resolve({
+                from,
+                to,
+                ni: ni.toNumber(),
+                ri: ri.toHexString(),
+                hashB: numHash.toString(),
+                uploadTime: uploadTime.toString()
+            });
+        });
+    });
+
+    // 使用promise1拒绝promise2
+    const rejectAndCleanup = (reason: string) => {
+        clearTimeout(timeoutId);
+        fairIntGen.removeAllListeners(resFilter);
+        rejectFunc(reason);
+    };
+    return { p, rejectAndCleanup };
+}
+// 或者 直接如果对方出错, 接下来的30s直接, 每秒请求一次结果

@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
+import { useLoginStore } from './login';
 
 // 存储appliacnt申请过程中的数据, 数据和statistics页面共享, 用于请求所需的gas
 export const useApplicantStore = defineStore('applicantStore', () => {
@@ -80,8 +81,53 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         };
     }
 
+    // 定义当前relayIndex, 即applicant正在和第几个relay通信
+    let relayIndex = ref(0);
+
+    // 获取applicant to next relay的数据
+    const loginStore = useLoginStore();
+    const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
+    function getApp2RelayData(relayIndex: number) {
+        let data: {
+            from: null | string;
+            r: null | string;
+            hf: null | string;
+            hb: null | string;
+            b: null | number;
+            c: null | number;
+        } = { from: null, r: null, hf: null, hb: null, b: null, c: null };
+        if (relayIndex === 0) {
+            data.r = sendInfo.r[0];
+            data.hf = sendInfo.hashForward[0];
+            data.hb = sendInfo.hashBackward[0];
+            data.b = sendInfo.b[0];
+        } else if (relayIndex >= 1 && relayIndex <= chainLength - 1) {
+            data.from = accountInfo.selectedAccount[relayIndex].address;
+            data.r = sendInfo.r[relayIndex];
+            data.hf = sendInfo.hashForward[relayIndex];
+            data.hb = sendInfo.hashBackward[relayIndex];
+            data.b = sendInfo.b[relayIndex];
+            data.c = 100;
+        } else if (relayIndex === chainLength) {
+            data.from = accountInfo.selectedAccount[relayIndex].address;
+            data.r = sendInfo.r[relayIndex];
+            data.hf = sendInfo.hashForward[relayIndex];
+            data.hb = sendInfo.hashBackward[relayIndex];
+            data.c = 100;
+        } else if (relayIndex === chainLength + 1) {
+            data.from = accountInfo.selectedAccount[relayIndex].address;
+            data.r = sendInfo.r[relayIndex];
+            data.hf = sendInfo.hashForward[relayIndex];
+            data.hb = sendInfo.hashBackward[relayIndex];
+        } else if (relayIndex === chainLength + 2) {
+            data.from = accountInfo.selectedAccount[relayIndex].address;
+            data.r = sendInfo.r[relayIndex];
+        }
+        return data;
+    }
+
     // 重置
     function $reset() {}
 
-    return { datas, resetCurrentStep, relays };
+    return { datas, resetCurrentStep, relays, relayIndex, getApp2RelayData };
 });

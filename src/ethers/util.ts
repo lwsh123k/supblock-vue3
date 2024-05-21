@@ -1,5 +1,9 @@
 import { ethers } from 'ethers';
 import { provider } from './provider';
+// import { cipher, decryptWithPrivateKey, encryptWithPublicKey } from 'eth-crypto';
+import EthCrypto, { cipher } from 'eth-crypto';
+import { sha256 } from '@noble/hashes/sha256';
+import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
 
 // 计算hash, 使用keccak256, 保证数据类型与solidity中的数据类型一致
 export function getHash(ni: number, ta: number, tb: number, ri: string) {
@@ -39,4 +43,43 @@ export function getRandom(tA: number, tB: number) {
     // 取hash
     let hash = getHash(ni, tA, tB, ri);
     return { ni, ri, hash };
+}
+
+// 使用对方公钥加密
+// 加密: 传入对象, 将对象 -> json字符串 -> 加密对象 -> 字符串
+// 返回的16进制加上0x前缀
+export async function getEncryptData(publicKey: string, data: any) {
+    let jsonData = JSON.stringify(data);
+    let encryptedData = await EthCrypto.encryptWithPublicKey(publicKey, jsonData);
+    return '0x' + cipher.stringify(encryptedData);
+}
+
+// 使用私钥解密
+// 解密: 字符串 -> 解密对象 -> json对象 -> 对象
+export async function getDecryptData(privateKey: string, encryptedData: string) {
+    // 去掉0x前缀
+    let removedPrefix = encryptedData.slice(2);
+    let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefix));
+    let data = JSON.parse(jsonData);
+    return data;
+}
+
+// 对任意个数的参数取hash
+export function keccak256(...args: string[]) {
+    const hash = sha256.create();
+    for (let arg of args) hash.update(arg.toString());
+    const result = toHex(hash.digest());
+    console.log(result);
+    return result;
+}
+
+// 验证正向hash
+export function verifyHashForward(applicantTempAccount: string, r: string, currentHash: string, PreHash: string) {
+    if (PreHash === undefined) return currentHash === keccak256(applicantTempAccount, r);
+    else return currentHash === keccak256(applicantTempAccount, r, PreHash);
+}
+// 验证反向hash
+export function verifyHashBackward(applicantTempAccount: string, r: string, currentHash: string, nextHash: string) {
+    if (nextHash === undefined) return currentHash === keccak256(applicantTempAccount, r);
+    else return currentHash === keccak256(applicantTempAccount, r, nextHash);
 }

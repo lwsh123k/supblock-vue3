@@ -79,7 +79,7 @@ function handleFileChange(event: Event) {
             const lines = fileContent.split('\r\n');
             lines.pop();
             try {
-                // 处理登录账号格式
+                // 处理登录账号格式, 使用socket连接到服务器
                 if (![1, 2, 102].includes(lines.length)) throw new Error('上传文件格式错误');
                 if (lines.length === 1) lines[1] = lines[0];
                 await loginStore.processAccount(lines);

@@ -2,11 +2,9 @@ import { defineStore } from 'pinia';
 import { ref, computed, reactive, readonly } from 'vue';
 import { ethers } from 'ethers';
 import { Buffer } from 'buffer';
-import { sha256 } from '@noble/hashes/sha256';
-import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
-import socket from '@/socket';
 import { getAuthString } from '@/api';
 import { useSocketStore } from './socket';
+import { keccak256 } from '@/ethers/util';
 
 // 定义嵌套类型
 interface Account {
@@ -95,14 +93,6 @@ export const useLoginStore = defineStore('login', () => {
         socketLogin([accountInfo.realNameAccount, accountInfo.anonymousAccount, ...accountInfo.selectedAccount]);
     }
 
-    // 对任意个数的参数取hash
-    function keccak256(...args: string[]) {
-        const hash = sha256.create();
-        for (let arg of args) hash.update(arg.toString());
-        const result = toHex(hash.digest());
-        console.log(result);
-        return result;
-    }
     // socket登录:
     async function socketLogin(loginAccunt: Account[]) {
         for (let item of loginAccunt) {

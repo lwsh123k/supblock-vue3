@@ -41,7 +41,7 @@ export const useEventListenStore = defineStore('eventListen', () => {
     const dataFromRelay = null; // relay发来的信息
 
     // 作为响应者一直监听到来的事件, 事件包括请求者hash上传 和 下一个relay的data
-
+    let relayData = new Map(); // 记录applicant和pre relay给relay发送的消息
     async function backendListen(myAddress: string) {
         // 创建合约实例
         let { key: privateKey } = accountInfo.anonymousAccount;
@@ -77,17 +77,38 @@ export const useEventListenStore = defineStore('eventListen', () => {
             });
         });
 
-        // 监听relay信息
+        // 监听StroreData合约: applicant -> relay
+        // applicant和pre relay是一个组合, 在合约中设置, 同时方便查看谁没有上传
         const storeData = await getStoreData();
-        let storeDatafilter = storeData.filters.storeDataEvent(null, myAddress);
-        storeData.on(storeDatafilter, async (from, to, data) => {
-            console.log('监听到了消息上传, data: ', data);
+        let app2Relayfilter = storeData.filters.App2RelayEvent(null, null, myAddress);
+        storeData.on(app2Relayfilter, async (applicant, preRelay, relay, data, dataIndex) => {
+            console.log('监听到app to relay消息, data: ', data);
+            // 验证数据的正确性, 需要先保存起来, 如果另一方已经上传完毕, 则检查是否正确
+            // 需不需要区分是谁发给relay的?
+        });
+
+        // 监听StroreData合约: pre relay -> next relay信息
+        let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, null, myAddress);
+        storeData.on(pre2Nextfilter, async (applicant, preRelay, relay, data, dataIndex) => {
+            console.log('监听到pre relay to relay消息, data: ', data);
             // 需不需要区分是谁发给relay的?
         });
     }
 
+    // relay向applicant发送数据
+    function sendRelay2AppData() {}
+
+    //  前一个relay向后一个relay发送数据
+    const relayReceivedData = new Map();
+    function getPre2NextData(nextRelayAccount: string) {
+        let data = relayReceivedData.get(nextRelayAccount);
+        return data;
+    }
+
+    // 后一个relay向前一个relay发送响应数据
+    function SendToPreRelay() {}
     // 重置
     function $reset() {}
 
-    return { backendListen, dataFromApplicant, dataFromRelay, dataToApplicant };
+    return { backendListen, dataFromApplicant, dataFromRelay, dataToApplicant, getPre2NextData, relayReceivedData };
 });

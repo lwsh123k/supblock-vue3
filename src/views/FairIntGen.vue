@@ -97,7 +97,8 @@ function prev() {
 }
 
 // hash上传
-const currentStep = ref(0); // 当前和哪一个relay生成随机数
+let { relayIndex } = storeToRefs(applicantStore);
+const currentStep = relayIndex; // 当前和哪一个relay生成随机数
 async function uploadHashAndListen() {
     // 只能上传对应的
     if (activeStep.value != currentStep.value) return;

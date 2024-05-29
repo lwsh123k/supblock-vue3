@@ -69,7 +69,7 @@ export function keccak256(...args: string[]) {
     const hash = sha256.create();
     for (let arg of args) hash.update(arg.toString());
     const result = toHex(hash.digest());
-    console.log(result);
+    // console.log(result);
     return result;
 }
 

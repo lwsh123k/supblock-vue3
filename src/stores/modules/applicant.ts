@@ -90,13 +90,15 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     function getApp2RelayData(relayIndex: number) {
         let data: {
             from: null | string;
+            to: null | string;
             r: null | string;
             hf: null | string;
             hb: null | string;
             b: null | number;
             c: null | number;
-        } = { from: null, r: null, hf: null, hb: null, b: null, c: null };
+        } = { from: null, to: null, r: null, hf: null, hb: null, b: null, c: null };
         if (relayIndex === 0) {
+            data.from = accountInfo.realNameAccount.address;
             data.r = sendInfo.r[0];
             data.hf = sendInfo.hashForward[0];
             data.hb = sendInfo.hashBackward[0];
@@ -123,6 +125,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
             data.from = accountInfo.selectedAccount[relayIndex].address;
             data.r = sendInfo.r[relayIndex];
         }
+
         return data;
     }
 

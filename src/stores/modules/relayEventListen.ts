@@ -78,18 +78,18 @@ export const useEventListenStore = defineStore('eventListen', () => {
         });
 
         // 监听StroreData合约: applicant -> relay
-        // applicant和pre relay是一个组合, 在合约中设置, 同时方便查看谁没有上传
+        // 此处的applicant是和当前relay对应的temp account
         const storeData = await getStoreData();
         let app2Relayfilter = storeData.filters.App2RelayEvent(null, null, myAddress);
         storeData.on(app2Relayfilter, async (applicant, preRelay, relay, data, dataIndex) => {
             console.log('监听到app to relay消息, data: ', data);
             // 验证数据的正确性, 需要先保存起来, 如果另一方已经上传完毕, 则检查是否正确
-            // 需不需要区分是谁发给relay的?
+            // 给下一个relay发送什么
         });
 
         // 监听StroreData合约: pre relay -> next relay信息
-        let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, null, myAddress);
-        storeData.on(pre2Nextfilter, async (applicant, preRelay, relay, data, dataIndex) => {
+        let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, myAddress);
+        storeData.on(pre2Nextfilter, async (preRelay, relay, data, dataIndex) => {
             console.log('监听到pre relay to relay消息, data: ', data);
             // 需不需要区分是谁发给relay的?
         });

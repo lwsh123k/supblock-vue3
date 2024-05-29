@@ -5,6 +5,8 @@ import { Buffer } from 'buffer';
 import { getAuthString } from '@/api';
 import { useSocketStore } from './socket';
 import { keccak256 } from '@/ethers/util';
+import { SendBlindingNumber, socketInit, socketMap } from '@/socket/socketInit';
+import type { Socket } from 'socket.io-client';
 
 // 定义嵌套类型
 interface Account {
@@ -46,7 +48,7 @@ export const useLoginStore = defineStore('login', () => {
         hashBackward: []
     });
 
-    // 登录：随机选择账户, 发送socket登录
+    // 登录：随机选择账户, 发送socket登录, 发送blinding number到服务器端
     async function processAccount(privateKey: string[]) {
         // 使account变为{key, address}的格式
         accountInfo.accounts = privateKey.map((item) => {
@@ -90,7 +92,15 @@ export const useLoginStore = defineStore('login', () => {
                 );
             }
         }
-        socketLogin([accountInfo.realNameAccount, accountInfo.anonymousAccount, ...accountInfo.selectedAccount]);
+        await socketLogin([accountInfo.realNameAccount, accountInfo.anonymousAccount, ...accountInfo.selectedAccount]);
+        // 发送blinding number到服务器端
+        if (privateKey.length === 102) {
+            let appTempAccount = accountInfo.selectedAccount.map((val) => {
+                return val.address;
+            });
+            let socket0 = socketMap.get(accountInfo.realNameAccount.address);
+            await SendBlindingNumber(socket0, sendInfo.b, appTempAccount);
+        }
     }
 
     // socket登录:
@@ -100,8 +110,7 @@ export const useLoginStore = defineStore('login', () => {
             let authString = (await getAuthString(address)).message;
             let wallet = new ethers.Wallet(key);
             let signedAuthString = await wallet.signMessage(authString);
-            let { bindEvents } = useSocketStore();
-            bindEvents(address, signedAuthString);
+            socketInit(address, signedAuthString);
         }
     }
 

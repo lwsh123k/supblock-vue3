@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Transfer from '../views/Transfer.vue';
 import Bridge from '../views/Bridge.vue';
 import FairIntGen from '@/views/FairIntGen.vue';
-import Statistic from '@/views/Statistic.vue';
+import Stats from '@/views/Stats.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -27,8 +27,8 @@ const router = createRouter({
             // }
         },
         {
-            path: '/statistic',
-            component: Statistic
+            path: '/stats',
+            component: Stats
         }
     ]
 });

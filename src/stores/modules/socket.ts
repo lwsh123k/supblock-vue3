@@ -6,7 +6,6 @@ import { getStoreData } from '@/ethers/contract';
 import { useApplicantStore } from './applicant';
 import { getEncryptData } from '@/ethers/util';
 import { getAccountInfo } from '@/api';
-import { useEventListenStore } from './relayEventListen';
 import { useLoginStore } from './login';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';

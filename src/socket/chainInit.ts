@@ -10,11 +10,11 @@ import { provider } from '@/ethers/provider';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useEventListenStore } from '@/stores/modules/relayEventListen';
 import { useLoginStore } from '@/stores/modules/login';
+import { getApp2RelayData } from '@/ethers/dataTransmission/getApp2RelayData';
 
 // step1: applicant通过点击按钮给validator发送信息
 export function appSendInitData(socket: Socket) {
     let applicantStore = useApplicantStore();
-    let { getApp2RelayData } = applicantStore;
 
     // 从login store获取账号信息
     const loginStore = useLoginStore();
@@ -22,8 +22,6 @@ export function appSendInitData(socket: Socket) {
 
     // applicant to validator
     let data = getApp2RelayData(0);
-    data.from = accountInfo.realNameAccount.address;
-    data.to = validatorAccount;
     socket.emit('applicant to validator: initialization data', data);
 }
 

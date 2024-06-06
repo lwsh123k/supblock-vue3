@@ -8,8 +8,10 @@ import { getAccountInfo } from '@/api';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { useApplicantStore } from '@/stores/modules/applicant';
-import { useEventListenStore } from '@/stores/modules/relayEventListen';
 import { useLoginStore } from '@/stores/modules/login';
+import { getApp2RelayData } from '@/ethers/dataTransmission/getApp2RelayData';
+import { useRelayStore } from '@/stores/modules/relay';
+import { getPre2NextData } from '@/ethers/dataTransmission/getPre2NextData';
 
 // socket从extension接收数据的类型
 interface NumInfo {
@@ -24,37 +26,38 @@ interface NumInfo {
 export function bindExtension(socket: Socket) {
     // 从applicant store获取relay index
     let applicantStore = useApplicantStore();
-    let { getApp2RelayData } = applicantStore;
     let { relayIndex } = storeToRefs(applicantStore);
 
     // 从relay获取数据
-    const eventListenStore = useEventListenStore();
-    let { getPre2NextData } = eventListenStore;
+    const relayStore = useRelayStore();
+    let {} = relayStore;
 
     // 从login store获取账号信息, 具体使用哪个账号和next relay发送消息
     const loginStore = useLoginStore();
     const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
 
-    // applicant给下一个relay发送消息
+    // applicant给下一个relay发送消息: 包含下一次使用的b, r, temp account
     // applicant要知道这是在和第几个relay发送消息, 即relayIndex
     socket.on('new tab opening finished to applicant', async (data1: NumInfo) => {
         try {
             let { number: fairIntegerNumber, relay: preRelayAddress } = data1;
             console.log('applicant receive message from extension', fairIntegerNumber);
-            // 选完随机数后, relay index++, 表示当前relay已经结束
-            relayIndex.value++;
             let index = relayIndex.value;
-            // 获取加密数据
+
+            // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
             let data = getApp2RelayData(index);
-            let accountAddress = await getAccountInfo(fairIntegerNumber); // 获取实名账户公钥, 地址
+            let accountAddress = await getAccountInfo(fairIntegerNumber);
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
             let relayAddress = accountAddress.address;
 
-            // 使用上一轮的temp account
+            // applicant使用和pre relay对应的temp account
             let readOnlyStoreData = await getStoreData(); // 获取合约实例
-            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[relayIndex.value];
+            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index];
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             await writeStoreData.setApp2Relay(preRelayAddress, relayAddress, encryptedData);
+
+            // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前relay已经结束
+            relayIndex.value++;
         } catch (error) {
             console.log(error);
         }
@@ -65,15 +68,15 @@ export function bindExtension(socket: Socket) {
     // 存储格式, map, address => data
     socket.on('new tab opening finished to pre relay', async (data1: NumInfo) => {
         try {
-            let { number: fairIntegerNumber, applicant: applicantAddress } = data1;
+            let { number: fairIntegerNumber, applicant: applicantAddress, relay: preRelayAddress } = data1;
             console.log('applicant receive message from extension', fairIntegerNumber);
-            // 获取加密数据
+            // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
             let accountAddress = await getAccountInfo(fairIntegerNumber);
             let relayAddress = accountAddress.address;
-            let data = getPre2NextData(relayAddress);
+            let data = getPre2NextData(applicantAddress, preRelayAddress, relayAddress);
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
 
-            // 使用anonymous account
+            // 当前relay使用anonymous account
             let readOnlyStoreData = await getStoreData();
             let { key: privateKey, address: addressA } = accountInfo.anonymousAccount;
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
@@ -82,4 +85,9 @@ export function bindExtension(socket: Socket) {
             console.log(error);
         }
     });
+}
+
+// 将blinding number提前发送给服务器, 以便之后插件打开新页面, 只有applicant才会调用这个函数
+export async function sendBlindingNumber(socket: Socket, blindingNumber: number[], tempAccountAddress: string[]) {
+    socket.emit('blinding number', { blindingNumber, tempAccountAddress });
 }

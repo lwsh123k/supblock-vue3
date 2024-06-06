@@ -48,7 +48,7 @@ import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
 import { listenReqNum, listenResHash } from '@/ethers/timedListen';
 import { getRandom } from '@/ethers/util';
-import { useEventListenStore } from '@/stores/modules/relayEventListen';
+import { useRelayStore } from '@/stores/modules/relay';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
@@ -57,9 +57,9 @@ import { computed, onBeforeMount, reactive, ref, toRef, toRefs, watchEffect } fr
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
 const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
-const eventListenStore = useEventListenStore();
-const dataToApplicant = eventListenStore.dataToApplicant; // 取引用, 保持reactive
-const dataFromApplicant = eventListenStore.dataFromApplicant;
+const relayStore = useRelayStore();
+const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
+const dataFromApplicant = relayStore.dataFromApplicant;
 const totalStep = chainLength + 3;
 
 // 使用计算属性合并
@@ -117,8 +117,8 @@ async function uploadHashAndListen() {
     dataToApplicant[step].status = 'hash正在上传';
     // 提前保存值, 检查自身正确性
     dataToApplicant[step].beforeChange = ni;
-    dataToApplicant[step].isUpload = false;
-    dataToApplicant[step].isReupload = false;
+    // dataToApplicant[step].isUpload = false;  // 直接在监听事件中赋值
+    // dataToApplicant[step].isReupload = false;
 
     //上传hash
     await writeFair.setResHash(addressA, hash);

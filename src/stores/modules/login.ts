@@ -5,7 +5,7 @@ import { Buffer } from 'buffer';
 import { getAuthString } from '@/api';
 import { useSocketStore } from './socket';
 import { keccak256 } from '@/ethers/util';
-import { SendBlindingNumber, socketInit, socketMap } from '@/socket/socketInit';
+import { sendBlindingNumber, socketInit, socketMap } from '@/socket';
 import type { Socket } from 'socket.io-client';
 
 // 定义嵌套类型
@@ -99,7 +99,7 @@ export const useLoginStore = defineStore('login', () => {
                 return val.address;
             });
             let socket0 = socketMap.get(accountInfo.realNameAccount.address);
-            await SendBlindingNumber(socket0, sendInfo.b, appTempAccount);
+            await sendBlindingNumber(socket0, sendInfo.b, appTempAccount);
         }
     }
 

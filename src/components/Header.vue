@@ -4,7 +4,7 @@
         <router-link to="/authentication" class="nav-link">Authentication</router-link>
         <router-link to="/bridge" class="nav-link" exact>Bridge</router-link>
         <router-link to="/transfer" class="nav-link">Transfer</router-link>
-        <router-link to="/statistic" class="nav-link">Statistic</router-link>
+        <router-link to="/stats" class="nav-link">Stats</router-link>
 
         <div class="upload">
             <!-- 文件上传按钮 -->
@@ -52,7 +52,7 @@
 import { ref, type Ref } from 'vue';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
-import { useEventListenStore } from '@/stores/modules/relayEventListen';
+import { backendListen } from '@/ethers/eventListen/relayEventListen';
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
@@ -88,7 +88,6 @@ function handleFileChange(event: Event) {
                 // 更改网页title
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // 开启监听
-                const { backendListen } = useEventListenStore();
                 backendListen(accountInfo.value.realNameAccount.address);
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();

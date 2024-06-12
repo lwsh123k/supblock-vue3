@@ -54,6 +54,7 @@ export function bindExtension(socket: Socket) {
             let readOnlyStoreData = await getStoreData(); // 获取合约实例
             let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index];
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
+            console.log(preRelayAddress, relayAddress, encryptedData);
             await writeStoreData.setApp2Relay(preRelayAddress, relayAddress, encryptedData);
 
             // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前relay已经结束

@@ -2,6 +2,7 @@ import { useLoginStore } from '@/stores/modules/login';
 
 export type AppToRelayData = {
     from: null | string;
+    to: null | string;
     r: null | string;
     hf: null | string;
     hb: null | string;
@@ -13,9 +14,10 @@ export type AppToRelayData = {
 export function getApp2RelayData(relayIndex: number) {
     const loginStore = useLoginStore();
     const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
-    let data: AppToRelayData = { from: null, r: null, hf: null, hb: null, b: null, c: null };
+    let data: AppToRelayData = { from: null, to: null, r: null, hf: null, hb: null, b: null, c: null };
     if (relayIndex === 0) {
         data.from = accountInfo.realNameAccount.address;
+        data.to = validatorAccount;
         data.r = sendInfo.r[0];
         data.hf = sendInfo.hashForward[0];
         data.hb = sendInfo.hashBackward[0];

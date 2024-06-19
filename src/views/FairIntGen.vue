@@ -53,6 +53,7 @@
             >
 
             <div class="ml-auto">
+                <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5">chain init</el-button>
                 <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
                     >生成随机数并上传hash</el-button
                 >
@@ -68,6 +69,8 @@ import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
 import { getRandom } from '@/ethers/util';
+import { socketMap } from '@/socket';
+import { appSendInitData } from '@/socket/chainData';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
@@ -94,12 +97,19 @@ function next() {
         activeStep.value++;
     }
 }
+function chainInit() {
+    let tempAddress0 = accountInfo.selectedAccount[0].address;
+    let socket0 = socketMap.get(tempAddress0);
+    if (socket0) appSendInitData(socket0);
+    else throw new Error('socket not found when chain initialize');
+}
+
+// chian init
 function prev() {
     if (activeStep.value > 0) {
         activeStep.value--;
     }
 }
-
 // hash上传
 let { relayIndex } = storeToRefs(applicantStore);
 const currentStep = relayIndex; // 当前和哪一个relay生成随机数
@@ -353,4 +363,3 @@ function processLongString(str: string, startLength = 5, endLength = 3) {
     margin: 10px;
 } */
 </style>
-@/stores/modules/login

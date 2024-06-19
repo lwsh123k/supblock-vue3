@@ -60,7 +60,7 @@ export const useLoginStore = defineStore('login', () => {
         // 如果是申请者的账户, 需要选择随机数, 预先计算需要的值
         if (privateKey.length === 102) {
             for (let i = 0; i <= chainLength + 2; i++) {
-                // selectedTempAccount: [0, 99) + 2
+                // selectedTempAccount: [0, 100) + 2
                 let randomIndex = Math.floor(Math.random() * 100);
                 accountInfo.selectedNum.push(randomIndex + 2);
                 // b: fair-integer选出随机数之后, 加b, mod n

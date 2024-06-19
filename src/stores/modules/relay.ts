@@ -4,7 +4,7 @@ import { getFairIntGen, getStoreData } from '@/ethers/contract';
 import { Wallet } from 'ethers';
 import { useLoginStore } from '@/stores/modules/login';
 import { getDecryptData } from '@/ethers/util';
-import { sendNextRelay2AppData } from '@/ethers/dataTransmission/getRelayResData';
+import { sendNextRelay2AppData } from '@/ethers/chainData/getRelayResData';
 
 // 用于接收发送方的请求
 export const useRelayStore = defineStore('relayStore', () => {

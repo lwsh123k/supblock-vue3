@@ -1,8 +1,9 @@
 import { useLoginStore } from '@/stores/modules/login';
 
 export type AppToRelayData = {
-    from: null | string;
-    to: null | string;
+    from: null | string; // pre applicant temp account, 和PreToNextRelayData中preAppTempAccount对应
+    to: null | string; // relay
+    appTempAccount: null | string; // 下一轮app要用的temp account
     r: null | string;
     hf: null | string;
     hb: null | string;
@@ -14,7 +15,16 @@ export type AppToRelayData = {
 export function getApp2RelayData(relayIndex: number) {
     const loginStore = useLoginStore();
     const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
-    let data: AppToRelayData = { from: null, to: null, r: null, hf: null, hb: null, b: null, c: null };
+    let data: AppToRelayData = {
+        from: null,
+        to: null,
+        appTempAccount: null,
+        r: null,
+        hf: null,
+        hb: null,
+        b: null,
+        c: null
+    };
     if (relayIndex === 0) {
         data.from = accountInfo.realNameAccount.address;
         data.to = validatorAccount;
@@ -23,25 +33,29 @@ export function getApp2RelayData(relayIndex: number) {
         data.hb = sendInfo.hashBackward[0];
         data.b = sendInfo.b[0];
     } else if (relayIndex >= 1 && relayIndex <= chainLength - 1) {
-        data.from = accountInfo.selectedAccount[relayIndex].address;
+        data.from = accountInfo.selectedAccount[relayIndex - 1].address; // 发送者为pre applicant temp account
+        data.appTempAccount = accountInfo.selectedAccount[relayIndex].address; // 数据包含和下一个relay交互的账户
         data.r = sendInfo.r[relayIndex];
         data.hf = sendInfo.hashForward[relayIndex];
         data.hb = sendInfo.hashBackward[relayIndex];
         data.b = sendInfo.b[relayIndex];
         data.c = 100;
     } else if (relayIndex === chainLength) {
-        data.from = accountInfo.selectedAccount[relayIndex].address;
+        data.from = accountInfo.selectedAccount[relayIndex - 1].address;
+        data.appTempAccount = accountInfo.selectedAccount[relayIndex].address;
         data.r = sendInfo.r[relayIndex];
         data.hf = sendInfo.hashForward[relayIndex];
         data.hb = sendInfo.hashBackward[relayIndex];
         data.c = 100;
     } else if (relayIndex === chainLength + 1) {
-        data.from = accountInfo.selectedAccount[relayIndex].address;
+        data.from = accountInfo.selectedAccount[relayIndex - 1].address;
+        data.appTempAccount = accountInfo.selectedAccount[relayIndex].address;
         data.r = sendInfo.r[relayIndex];
         data.hf = sendInfo.hashForward[relayIndex];
         data.hb = sendInfo.hashBackward[relayIndex];
     } else if (relayIndex === chainLength + 2) {
-        data.from = accountInfo.selectedAccount[relayIndex].address;
+        data.from = accountInfo.selectedAccount[relayIndex - 1].address;
+        data.appTempAccount = accountInfo.selectedAccount[relayIndex].address;
         data.r = sendInfo.r[relayIndex];
     }
 

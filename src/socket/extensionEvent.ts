@@ -9,9 +9,9 @@ import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
-import { getApp2RelayData } from '@/ethers/dataTransmission/getApp2RelayData';
+import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { useRelayStore } from '@/stores/modules/relay';
-import { getPre2NextData } from '@/ethers/dataTransmission/getPre2NextData';
+import { getPre2NextData } from '@/ethers/chainData/getPre2NextData';
 
 // socket从extension接收数据的类型
 interface NumInfo {
@@ -55,7 +55,7 @@ export function bindExtension(socket: Socket) {
             let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index];
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             console.log(preRelayAddress, relayAddress, encryptedData);
-            await writeStoreData.setApp2Relay(preRelayAddress, relayAddress, encryptedData);
+            await writeStoreData.setApp2Relay(relayAddress, encryptedData);
 
             // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前relay已经结束
             relayIndex.value++;

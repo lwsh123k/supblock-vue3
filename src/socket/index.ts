@@ -8,6 +8,7 @@ import { getAccountInfo } from '@/api';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { bindExtension } from './extensionEvent';
+import { appRecevieValidatorData } from './chainData';
 export { sendBlindingNumber } from './extensionEvent';
 
 // 每个正在使用的账号, 都要连接socket, 绑定extension, chain initialization事件
@@ -36,7 +37,6 @@ export function socketInit(address: string, signedAuthString: string) {
     // extension打开事件
     bindExtension(socket);
 
-    // chain init事件, applicant发送请求(按钮点击), validator接收请求(事件绑定), 并给applicant回送信息(事件绑定), joint random selection
-
-    //
+    // chain init事件, applicant发送请求(按钮点击)
+    appRecevieValidatorData(socket);
 }

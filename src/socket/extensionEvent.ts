@@ -41,7 +41,7 @@ export function bindExtension(socket: Socket) {
     socket.on('new tab opening finished to applicant', async (data1: NumInfo) => {
         try {
             let { number: fairIntegerNumber, relay: preRelayAddress } = data1;
-            console.log('applicant receive message from extension', fairIntegerNumber);
+            console.log('applicant receive message from extension, relay number: ', fairIntegerNumber);
             let index = relayIndex.value;
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
@@ -54,7 +54,7 @@ export function bindExtension(socket: Socket) {
             let readOnlyStoreData = await getStoreData(); // 获取合约实例
             let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index];
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
-            console.log(preRelayAddress, relayAddress, encryptedData);
+            // console.log(preRelayAddress, relayAddress, encryptedData);
             await writeStoreData.setApp2Relay(relayAddress, encryptedData);
 
             // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前relay已经结束
@@ -64,22 +64,23 @@ export function bindExtension(socket: Socket) {
         }
     });
 
-    // relay给下一个relay发送消息
+    // pre relay -> next relay
     // 如果relay要给多个next relay发送消息, 它应该提前知道给下一个relay发送什么消息, 这个消息应该提前被存储, 在发送时拿出来
     // 存储格式, map, address => data
     socket.on('new tab opening finished to pre relay', async (data1: NumInfo) => {
         try {
             let { number: fairIntegerNumber, applicant: applicantAddress, relay: preRelayAddress } = data1;
             console.log('applicant receive message from extension', fairIntegerNumber);
-            // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
+
+            // pre anonymous relay -> next real name relay: 获取对方的公钥, 需要发送的信息
+            let { key: privateKey, address: preRelayAnonymousAccount } = accountInfo.anonymousAccount;
             let accountAddress = await getAccountInfo(fairIntegerNumber);
             let relayAddress = accountAddress.address;
-            let data = getPre2NextData(applicantAddress, preRelayAddress, relayAddress);
+            let data = getPre2NextData(applicantAddress, preRelayAnonymousAccount, relayAddress);
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
 
             // 当前relay使用anonymous account
             let readOnlyStoreData = await getStoreData();
-            let { key: privateKey, address: addressA } = accountInfo.anonymousAccount;
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             await writeStoreData.setPre2Next(relayAddress, encryptedData);
         } catch (error) {

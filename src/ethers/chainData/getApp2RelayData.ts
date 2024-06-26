@@ -1,15 +1,5 @@
 import { useLoginStore } from '@/stores/modules/login';
-
-export type AppToRelayData = {
-    from: null | string; // pre applicant temp account, 和PreToNextRelayData中preAppTempAccount对应
-    to: null | string; // relay
-    appTempAccount: null | string; // 下一轮app要用的temp account
-    r: null | string;
-    hf: null | string;
-    hb: null | string;
-    b: null | number;
-    c: null | number;
-};
+import type { AppToRelayData } from './chainDataType';
 
 // 获取applicant to next relay的数据
 export function getApp2RelayData(relayIndex: number) {

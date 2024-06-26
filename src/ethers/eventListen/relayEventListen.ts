@@ -3,18 +3,17 @@ import { getFairIntGen, getStoreData } from '../contract';
 import { Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
 import { getDecryptData, verifyHashBackward, verifyHashForward } from '../util';
-import type { AppToRelayData } from '../chainData/getApp2RelayData';
 import { sendNextRelay2AppData } from '../chainData/getRelayResData';
-import type { PreToNextRelayData } from '../chainData/getPre2NextData';
+import {
+    relaySend2NextData,
+    relayReceivedData,
+    type AppToRelayData,
+    type CombinedData,
+    type PreToNextRelayData
+} from '../chainData/chainDataType';
+import { da } from 'element-plus/es/locales.mjs';
 
-// 记录pre applicant temp和pre relay给relay发送的消息
-export type CombinedData = {
-    appToRelayData?: AppToRelayData;
-    preToNextRelayData?: PreToNextRelayData;
-};
-export const preUserData = new Map<string, CombinedData>();
-
-// 作为响应者一直监听到来的事件, 事件包括请求者hash上传 和 来自上一个relay的data
+// relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen(myAddress: string) {
     // 从store中获取数据
     const { chainLength, accountInfo, validatorAccount, sendInfo } = useLoginStore();
@@ -62,14 +61,18 @@ export async function backendListen(myAddress: string) {
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, myAddress);
     storeData.on(app2Relayfilter, async (from, relay, data, dataIndex) => {
         console.log('监听到app to next relay消息');
-        // 给下一个relay发送什么? 发送pre applicant发送来的数据
+
         // decode and save. 解码的数据中包含applicant下次要用的账号
         let decodedData: AppToRelayData = await getDecryptData(accountInfo.realNameAccount.key, data);
+        let { from: from1, to, appTempAccount, r, hf, hb, b, c } = decodedData;
         console.log(decodedData);
 
-        // 验证数据是否符合要求
+        // save data to nexe relay. 发送pre applicant发送来的数据
+        // if (appTempAccount === null) throw new Error('app to next relay data error');
+        // saveData2NextRelay(appTempAccount, 'pre appliacnt', decodedData);
+
+        // verify data and send back
         // next relay通过socket使用匿名账户回复applicant
-        let { from: from1, to, appTempAccount, r, hf, hb, b, c } = decodedData;
         let preAppTempAccount = from; // 对应关系
         checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
     });
@@ -80,22 +83,22 @@ export async function backendListen(myAddress: string) {
         console.log('监听到pre relay to next relay消息, data: ');
         // 收到的数据中包含pre applicant temp account
         let decodedData: PreToNextRelayData = await getDecryptData(accountInfo.realNameAccount.key, data);
+        let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
         console.log(decodedData);
 
         // verify and send back
-        let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
         if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
         checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
     });
 }
 
 function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) {
-    let savedData = preUserData.get(preAppTempAccount);
+    let savedData = relayReceivedData.get(preAppTempAccount);
 
     // 一开始就没有数据
     if (savedData === undefined) {
         savedData = {};
-        preUserData.set(preAppTempAccount, savedData);
+        relayReceivedData.set(preAppTempAccount, savedData);
     }
 
     // 判断是谁调用
@@ -153,4 +156,33 @@ function verifyData(data: CombinedData) {
     if (res1 && res2) return true;
 
     return false;
+}
+
+// save data for next relay in advance. not used...................
+function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRelayData | PreToNextRelayData) {
+    let data2NextRelay = relaySend2NextData.get(appTempAccount);
+    if (data2NextRelay === undefined) {
+        // current relay -> next:
+        data2NextRelay = {
+            from: null, //current relay
+            to: null,
+            preAppTempAccount: null, // the current applicant corresponding to current relay
+            preRelayAccount: null, //current relay
+            hf: null,
+            hb: null,
+            b: null,
+            n: null,
+            t: null
+        };
+        relaySend2NextData.set(appTempAccount, data2NextRelay);
+    }
+
+    if (from === 'pre appliacnt' && 'c' in data) {
+        data2NextRelay.hf = data.hf;
+        data2NextRelay.hb = data.hb;
+        data2NextRelay.b = data.b;
+    } else if (from === 'pre relay' && 'n' in data) {
+        data2NextRelay.n = data.n;
+        data2NextRelay.t = data.t;
+    }
 }

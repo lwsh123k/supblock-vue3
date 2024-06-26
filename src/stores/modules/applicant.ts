@@ -2,6 +2,13 @@ import { defineStore } from 'pinia';
 import { reactive, ref } from 'vue';
 import { useLoginStore } from './login';
 
+export interface RelayAccount {
+    index: number; // relay的编号
+    publicKey: string;
+    realNameAccount: string;
+    anonymousAccount: string;
+}
+
 // 存储appliacnt申请过程中的数据, 数据和statistics页面共享, 用于请求所需的gas
 export const useApplicantStore = defineStore('applicantStore', () => {
     // 定义一个接口来描述表格中的每一项
@@ -61,23 +68,23 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     }
 
     // relay信息, 第一个为validator
-    interface RelayAccount {
-        index: number; // relay的编号
-        publicKey: string;
-        address: string;
-    }
+
     let relays = reactive<RelayAccount[]>([]);
     relays[0] = {
-        index: -1,
+        index: -1, // validator未编号, 赋值为-1
         publicKey:
             '0x374462096f4ccdc90b97c0201d0ad8ff67da224026dc20e61c107f577db537d049648511e4e922ce74a0ff7494eeac72317e60a48cb2a71af21e4e2258fcca36',
-        address: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'
+        realNameAccount: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba',
+        anonymousAccount: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'
     };
+    // 当随机数选出来时, 可以知道next relay real name account 和 real name account对应的pub key;
+    // 当下一个relay回送消息时, 可以知道relay anonymous account
     for (let i = 1; i < 6; i++) {
         relays[i] = {
-            index: -1,
+            index: -2,
             publicKey: '',
-            address: ''
+            realNameAccount: '',
+            anonymousAccount: ''
         };
     }
 

@@ -76,6 +76,7 @@ import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
+import { setNextRelayInfo } from './FairIntegerGen/updateNextRelay';
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
@@ -118,10 +119,10 @@ async function uploadHashAndListen() {
     if (activeStep.value != currentStep.value) return;
     let step = currentStep.value;
     resetCurrentStep(step);
-    // 选择使用哪个账号上传hash, 和谁交互
+    // applicant: temp account, relay: anonymous account
     let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
-    let addressB = (await getRelayNumber(step)).address;
-    console.log(addressB);
+    let addressB = relays[step].anonymousAccount;
+    console.log(`applicant interacting with ${addressB}: hash upload`);
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();
     let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
@@ -204,18 +205,17 @@ async function uploadHashAndListen() {
                 // 更改状态
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
-                // 设置下一个relay编号, 给下一个relay发消息
+                // set next relay number, update next relay info
                 currentStep.value++;
-                relays[currentStep.value].index = ni;
+                await setNextRelayInfo(relays, currentStep.value, ni);
             }
         });
 
     reuploadPromise
-        .then((resReuploadNum) => {
+        .then(async (resReuploadNum) => {
             let { ni } = resReuploadNum;
             currentStep.value++;
-            relays[currentStep.value].index = ni;
-            // 给下一个relay发消息
+            await setNextRelayInfo(relays, currentStep.value, ni);
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -233,7 +233,7 @@ async function uploadRandomNum() {
     try {
         // 选择使用哪个账号上传hash, 和谁交互
         let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
-        let addressB = (await getRelayNumber(step)).address;
+        let addressB = relays[step].anonymousAccount;
 
         // 创建合约实例
         const readOnlyFair = await getFairIntGen();
@@ -287,7 +287,7 @@ watchEffect(async () => {
                 datas[i][0].isReupload = true;
                 // 设置next relay
                 currentStep.value++;
-                relays[currentStep.value].index = ni;
+                await setNextRelayInfo(relays, currentStep.value, ni);
             } else {
                 currentStep.value++;
                 relays[currentStep.value].index = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 100;

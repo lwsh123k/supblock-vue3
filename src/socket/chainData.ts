@@ -1,5 +1,7 @@
 import type { Socket } from 'socket.io-client';
 import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
+import { useApplicantStore } from '@/stores/modules/applicant';
+import { storeToRefs } from 'pinia';
 
 // applicant给validator发送chain initialization data
 export function appSendInitData(socket: Socket) {
@@ -19,11 +21,15 @@ export function appRecevieValidatorData(socket: Socket) {
 
 // app接收next relay消息, 包含下次要使用的匿名账户
 export function appRecevieRelayData(socket: Socket) {
+    let applicantStore = useApplicantStore();
+    let relays = applicantStore.relays;
+    let { relayIndex } = storeToRefs(applicantStore);
     socket.on('next relay to app', (data) => {
         // console.log(data);
         let { from, to, nextRelayAnonymousAccount } = data;
         console.log('chain initialization complete, token hash: ', nextRelayAnonymousAccount);
 
         // 更新到joint random selection
+        relays[relayIndex.value].anonymousAccount = nextRelayAnonymousAccount;
     });
 }

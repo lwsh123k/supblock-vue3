@@ -100,12 +100,12 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
         savedData = {};
         relayReceivedData.set(preAppTempAccount, savedData);
     }
-
+    console.log(relayReceivedData.get(preAppTempAccount));
     // 判断是谁调用
     if (from === 'pre appliacnt temp account') {
         savedData.appToRelayData = data;
         // 查看对方有没有上传数据
-        if (savedData.preToNextRelayData != null) {
+        if ('preToNextRelayData' in savedData) {
             // verify, fair intager, hashforward, hashbackward
             let res = verifyData(savedData);
             // send back to applicant, using ano
@@ -118,7 +118,7 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
     } else if (from === 'pre relay account') {
         savedData.preToNextRelayData = data;
         // 查看对方有没有上传数据
-        if (savedData.appToRelayData != null) {
+        if ('appToRelayData' in savedData) {
             // verify
             let res = verifyData(savedData);
             // send back to applicant, using ano
@@ -146,7 +146,7 @@ function verifyData(data: CombinedData) {
         appTempAccount = data.appToRelayData.appTempAccount;
     if (!hf || !preHf || !r || !appTempAccount) return false;
     let res1 = verifyHashForward(appTempAccount, r, hf, preHf);
-
+    console.log('res1: ', res1);
     let hb = data.preToNextRelayData.hb,
         nextHb = data.appToRelayData.hb;
     // r = data.appToRelayData.r, 没有r, 无法验证反向hash

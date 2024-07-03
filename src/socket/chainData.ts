@@ -27,7 +27,7 @@ export function appRecevieRelayData(socket: Socket) {
     socket.on('next relay to app', (data) => {
         // console.log(data);
         let { from, to, nextRelayAnonymousAccount } = data;
-        console.log('chain initialization complete, token hash: ', nextRelayAnonymousAccount);
+        console.log('next relay anonymous account: ', nextRelayAnonymousAccount);
 
         // 更新到joint random selection
         relays[relayIndex.value].anonymousAccount = nextRelayAnonymousAccount;

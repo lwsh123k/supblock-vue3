@@ -44,7 +44,7 @@
         <div class="mt-10 flex items-center">
             <el-button @click="prev" :disabled="activeStep === 0" size="large">上一步</el-button>
             <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large">下一步</el-button>
-            <span v-if="relays[activeStep + 1].index != -1" class="ml-14 text-2xl"
+            <span v-if="relays[activeStep + 1].index != -2" class="ml-14 text-2xl"
                 >next relay:
                 {{
                     `(fair integer: ${relays[activeStep + 1].index} + blinding number: ${sendInfo.b[activeStep]}) % 100 = ` +

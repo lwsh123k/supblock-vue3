@@ -1,6 +1,4 @@
 import { defineStore, storeToRefs } from 'pinia';
-import { reactive, ref } from 'vue';
-import { io } from 'socket.io-client';
 import type { Socket } from 'socket.io-client';
 import { getStoreData } from '@/ethers/contract';
 import { getEncryptData } from '@/ethers/util';
@@ -28,10 +26,6 @@ export function bindExtension(socket: Socket) {
     let applicantStore = useApplicantStore();
     let { relayIndex } = storeToRefs(applicantStore);
 
-    // 从relay获取数据
-    const relayStore = useRelayStore();
-    let {} = relayStore;
-
     // 从login store获取账号信息, 具体使用哪个账号和next relay发送消息
     const loginStore = useLoginStore();
     const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
@@ -41,23 +35,24 @@ export function bindExtension(socket: Socket) {
     socket.on('new tab opening finished to applicant', async (data1: NumInfo) => {
         try {
             let { number: fairIntegerNumber, relay: preRelayAddress } = data1;
-            console.log('applicant receive message from extension, relay number: ', fairIntegerNumber);
+            console.log('extension -> applicant, next relay number: ', fairIntegerNumber);
+            console.log('relay index', relayIndex.value);
             let index = relayIndex.value;
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
-            let data = getApp2RelayData(index);
+            let data = getApp2RelayData(index + 1); // 获得下一轮需要的数据
             let accountAddress = await getAccountInfo(fairIntegerNumber);
+            data.to = accountAddress.address;
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
             let relayAddress = accountAddress.address;
 
-            // applicant使用和pre relay对应的temp account
-            let readOnlyStoreData = await getStoreData(); // 获取合约实例
-            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index];
+            // applicant使用当前轮的temp account, 给next relay发送下一轮的app tmep account
+            let readOnlyStoreData = await getStoreData();
+            let { key: privateKey, address: addressA } = accountInfo.selectedAccount[index]; // 当前轮的temp account
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
-            // console.log(preRelayAddress, relayAddress, encryptedData);
             await writeStoreData.setApp2Relay(relayAddress, encryptedData);
 
-            // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前relay已经结束
+            // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前轮结束
             relayIndex.value++;
         } catch (error) {
             console.log(error);
@@ -65,12 +60,10 @@ export function bindExtension(socket: Socket) {
     });
 
     // pre relay -> next relay
-    // 如果relay要给多个next relay发送消息, 它应该提前知道给下一个relay发送什么消息, 这个消息应该提前被存储, 在发送时拿出来
-    // 存储格式, map, address => data
     socket.on('new tab opening finished to pre relay', async (data1: NumInfo) => {
         try {
             let { number: fairIntegerNumber, applicant: applicantAddress, relay: preRelayAddress } = data1;
-            console.log('applicant receive message from extension', fairIntegerNumber);
+            console.log('extension -> pre relay, next relay number: ', fairIntegerNumber);
 
             // pre anonymous relay -> next real name relay: 获取对方的公钥, 需要发送的信息
             let { key: privateKey, address: preRelayAnonymousAccount } = accountInfo.anonymousAccount;

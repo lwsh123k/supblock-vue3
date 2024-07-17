@@ -44,11 +44,12 @@
         <div class="mt-10 flex items-center">
             <el-button @click="prev" :disabled="activeStep === 0" size="large">上一步</el-button>
             <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large">下一步</el-button>
-            <span v-if="relays[activeStep + 1].index != -2" class="ml-14 text-2xl"
+            <!-- relays数组第一个relay为validator, 所以与b数组索引错开 -->
+            <span v-if="relays[activeStep + 1].relayFairInteger != -10" class="ml-14 text-2xl"
                 >next relay:
                 {{
-                    `(fair integer: ${relays[activeStep + 1].index} + blinding number: ${sendInfo.b[activeStep]}) % 100 = ` +
-                    ((relays[activeStep + 1].index + sendInfo.b[activeStep]) % 100)
+                    `(fair integer: ${relays[activeStep + 1].relayFairInteger} + blinding number: ${sendInfo.b[activeStep]}) % 100 = ` +
+                    ((relays[activeStep + 1].relayFairInteger + sendInfo.b[activeStep]) % 100)
                 }}</span
             >
 
@@ -88,7 +89,7 @@ const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
 const totalStep = chainLength + 3;
 
 const popoverVisible = ref(true);
-// 页数跳转
+// 页数跳转, 显示数据
 const activeStep = ref(0);
 function toStep(number: number) {
     activeStep.value = number;
@@ -98,6 +99,13 @@ function next() {
         activeStep.value++;
     }
 }
+function prev() {
+    if (activeStep.value > 0) {
+        activeStep.value--;
+    }
+}
+
+// chian init
 function chainInit() {
     let tempAddress0 = accountInfo.selectedAccount[0].address;
     let socket0 = socketMap.get(tempAddress0);
@@ -105,19 +113,14 @@ function chainInit() {
     else throw new Error('socket not found when chain initialize');
 }
 
-// chian init
-function prev() {
-    if (activeStep.value > 0) {
-        activeStep.value--;
-    }
-}
 // hash上传
 let { relayIndex } = storeToRefs(applicantStore);
-const currentStep = relayIndex; // 当前和哪一个relay生成随机数
 async function uploadHashAndListen() {
+    let currentStep = relayIndex.value; // interact with which relay
+
     // 只能上传对应的
-    if (activeStep.value != currentStep.value) return;
-    let step = currentStep.value;
+    if (activeStep.value != currentStep) return;
+    let step = currentStep;
     resetCurrentStep(step);
     // applicant: temp account, relay: anonymous account
     let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
@@ -152,6 +155,7 @@ async function uploadHashAndListen() {
     datas[step][0].randomText = ni.toString();
 
     //上传hash
+    console.log(hash);
     await writeFair.setReqHash(addressB, hash);
     datas[step][0].status = 'hash已上传';
 
@@ -206,16 +210,15 @@ async function uploadHashAndListen() {
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
                 // set next relay number, update next relay info
-                currentStep.value++;
-                await setNextRelayInfo(relays, currentStep.value, ni);
+                await setNextRelayInfo(relays, ++currentStep, ni);
             }
         });
 
+    // 检测对方重传
     reuploadPromise
         .then(async (resReuploadNum) => {
             let { ni } = resReuploadNum;
-            currentStep.value++;
-            await setNextRelayInfo(relays, currentStep.value, ni);
+            await setNextRelayInfo(relays, ++currentStep, ni);
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -251,19 +254,21 @@ async function uploadRandomNum() {
     }
 }
 
-// 监听status改变
+// 检查随机数是否正确
 // watchEffect自动跟踪ref变量
 watchEffect(async () => {
     for (let i = 0; i < datas.length; i++) {
-        // 检查都上传时, 对方是否上传错误: 自己上传了 && 自己上传的是对的 && 之前没有重传过
+        // 检查都上传时, 对方是否上传错误: 自己上传了 && 自己上传的是对的 && 之前没有重传过 && 之前没有检查过
         // 每一次都会执行全部for循环, 还是只会改变变化的部分??????
         if (
             datas[i][0].status === '随机数已上传' &&
             datas[i][1].status === '随机数已上传' &&
             datas[i][0].isUpload === true &&
             datas[i][0].randomNumBefore === datas[i][0].randomNumAfter &&
-            datas[i][0].isReupload === false
+            datas[i][0].isReupload === false &&
+            !datas[i][0].hasChecked
         ) {
+            console.log('random num check...');
             // 创建合约实例
             let { key: privateKey, address: addressA } = accountInfo.selectedAccount[i];
             let addressB = validatorAccount;
@@ -286,13 +291,16 @@ watchEffect(async () => {
                 datas[i][0].status = '随机数已重新上传';
                 datas[i][0].isReupload = true;
                 // 设置next relay
-                currentStep.value++;
-                await setNextRelayInfo(relays, currentStep.value, ni);
+                let nextStep = i + 1;
+                await setNextRelayInfo(relays, nextStep, ni);
             } else {
-                currentStep.value++;
-                relays[currentStep.value].index = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 100;
+                let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 100;
+                let nextStep = i + 1;
+                await setNextRelayInfo(relays, nextStep, nextIndex);
                 console.log('随机数正确 ');
             }
+
+            datas[i][0].hasChecked = true;
         }
     }
 });
@@ -308,7 +316,7 @@ async function getRelayNumber(current: number) {
             address: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'
         };
     } else {
-        let relayNumber = relays[current].index;
+        let relayNumber = relays[current].relayNumber;
         let accountInfo = await getAccountInfo(relayNumber);
         result = { relayNumber, ...accountInfo };
     }

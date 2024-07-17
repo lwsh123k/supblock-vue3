@@ -11,21 +11,19 @@ import {
     type CombinedData,
     type PreToNextRelayData
 } from '../chainData/chainDataType';
-import { da } from 'element-plus/es/locales.mjs';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
-export async function backendListen(myAddress: string) {
+export async function backendListen(realNameAddress: string, anonymousAddress: string) {
     // 从store中获取数据
     const { chainLength, accountInfo, validatorAccount, sendInfo } = useLoginStore();
     const relayStore = useRelayStore();
     const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
     const dataFromApplicant = relayStore.dataFromApplicant;
 
-    // 创建合约实例
+    // listen hash upload, using anonymous account
     let { key: privateKey } = accountInfo.anonymousAccount;
     const fairIntGen = await getFairIntGen();
-    let hashFilter = fairIntGen.filters.ReqHashUpload(null, myAddress);
-    // 监听请求者上传hash
+    let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
         console.log('监听到了hash, ', from, to, infoHash, tA, tB, uploadTime, index);
         let len = dataFromApplicant.length;
@@ -55,10 +53,10 @@ export async function backendListen(myAddress: string) {
         });
     });
 
-    // 监听StroreData合约: applicant -> relay
-    // 此处的applicant是和当前relay对应的temp account
+    // listen app -> next, current -> next, using real name account
+    // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
-    let app2Relayfilter = storeData.filters.App2RelayEvent(null, myAddress);
+    let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
     storeData.on(app2Relayfilter, async (from, relay, data, dataIndex) => {
         console.log('监听到app to next relay消息');
 
@@ -77,8 +75,8 @@ export async function backendListen(myAddress: string) {
         checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
     });
 
-    // 监听StroreData合约: pre relay -> next relay信息
-    let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, myAddress);
+    // pre relay -> next relay信息
+    let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, realNameAddress);
     storeData.on(pre2Nextfilter, async (form, relay, data, dataIndex) => {
         console.log('监听到pre relay to next relay消息, data: ');
         // 收到的数据中包含pre applicant temp account
@@ -98,12 +96,14 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
     // 一开始就没有数据
     if (savedData === undefined) {
         savedData = {};
-        relayReceivedData.set(preAppTempAccount, savedData);
+        console.log('no data', preAppTempAccount);
     }
-    console.log(relayReceivedData.get(preAppTempAccount));
+
     // 判断是谁调用
     if (from === 'pre appliacnt temp account') {
         savedData.appToRelayData = data;
+        relayReceivedData.set(preAppTempAccount, savedData);
+        console.log(relayReceivedData.get(preAppTempAccount));
         // 查看对方有没有上传数据
         if ('preToNextRelayData' in savedData) {
             // verify, fair intager, hashforward, hashbackward
@@ -117,6 +117,8 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
         }
     } else if (from === 'pre relay account') {
         savedData.preToNextRelayData = data;
+        relayReceivedData.set(preAppTempAccount, savedData);
+        console.log(relayReceivedData.get(preAppTempAccount));
         // 查看对方有没有上传数据
         if ('appToRelayData' in savedData) {
             // verify

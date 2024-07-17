@@ -53,10 +53,10 @@ import { ref, type Ref } from 'vue';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
 import { backendListen } from '@/ethers/eventListen/relayEventListen';
+import { ethers } from 'ethers';
 
-const popoverVisible = ref(true);
 const loginStore = useLoginStore();
-const { chainLength, accountInfo, validatorAccount, sendInfo } = storeToRefs(loginStore);
+const { accountInfo } = storeToRefs(loginStore);
 
 // 文件处理方法
 // 声明一个 ref 来存放该元素的引用
@@ -88,7 +88,9 @@ function handleFileChange(event: Event) {
                 // 更改网页title
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // 开启监听
-                backendListen(accountInfo.value.realNameAccount.address);
+                let realNameAccount = ethers.utils.computeAddress(lines[0]);
+                let anonymousAccount = ethers.utils.computeAddress(lines[1]);
+                backendListen(realNameAccount, anonymousAccount);
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();
             } catch (e) {

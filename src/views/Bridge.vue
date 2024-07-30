@@ -10,10 +10,10 @@
                         <span class="">{{ row.role }}</span>
                     </template>
                 </el-table-column>
-                <el-table-column prop="randomNum" label="randon num">
+                <el-table-column prop="randomText" label="randon num">
                     <template #default="scope">
                         <!-- 条件为false时就正常显示文本 -->
-                        <input type="text" v-if="scope.row.role === 'relay'" v-model="scope.row.randomNum" />
+                        <input type="text" v-if="scope.row.role === 'relay'" v-model="scope.row.randomText" />
                     </template>
                 </el-table-column>
                 <el-table-column prop="executionTime" label="execution time" placeholder=""></el-table-column>
@@ -112,13 +112,15 @@ async function uploadHashAndListen() {
     dataToApplicant[step].executionTime = tB;
     dataToApplicant[step].hash = hash;
     dataToApplicant[step].r = ri;
-    dataToApplicant[step].randomNum = ni;
+    dataToApplicant[step].randomNumBefore = ni;
     dataToApplicant[step].index = dataIndex;
     dataToApplicant[step].status = 'hash正在上传';
+
     // 提前保存值, 检查自身正确性
-    dataToApplicant[step].beforeChange = ni;
-    // dataToApplicant[step].isUpload = false;  // 直接在监听事件中赋值
-    // dataToApplicant[step].isReupload = false;
+    dataToApplicant[step].randomNumAfter = ni;
+    dataToApplicant[step].isUpload = false;
+    dataToApplicant[step].isReupload = false;
+    dataToApplicant[step].randomText = ni.toString();
 
     //上传hash
     await writeFair.setResHash(addressA, hash);
@@ -137,18 +139,18 @@ async function uploadHashAndListen() {
         console.log('没有监听到', error);
         // 超时 && 自己已上传 && 上传的是对的
         if (
-            dataToApplicant[step].isUpload === true &&
-            dataToApplicant[step].beforeChange === dataToApplicant[step].randomNum
+            dataToApplicant[step].isUpload &&
+            dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter
         ) {
             // 重传
             dataFromApplicant[step].status = '未在30s内上传随机数';
-            let { ni, ri, hash } = getRandom(tA, tB);
+            let { ni: niReuploaded, ri, hash } = getRandom(tA, tB);
             let index = dataFromApplicant[step].index;
-            console.log(addressA, index);
-            await writeFair.reuploadNum(addressA, index, 1, ni, ri);
+            console.log(`random num reupload, appliacnt address: ${addressA}, onchain array index: ${index}`);
+            await writeFair.reuploadNum(addressA, index, 1, niReuploaded, ri);
             // 改变状态
-            dataToApplicant[step].randomNum += '/' + ni;
-            dataToApplicant[step].r += '/' + ri;
+            dataToApplicant[step].randomText = ni.toString() + '/' + niReuploaded;
+            // dataToApplicant[step].r += '/' + ri;
             dataToApplicant[step].status = '随机数已重新上传';
             dataToApplicant[step].isReupload = true;
             // 给下一个relay发消息
@@ -167,15 +169,18 @@ async function uploadRandomNum() {
         const wallet = new Wallet(privateKey, provider);
         let writeFair = readOnlyFair.connect(wallet);
         let addressA = dataFromApplicant[step].from;
+        dataToApplicant[step].randomNumAfter = Number(dataToApplicant[step].randomText); // 上传修改后的数据
         await writeFair.setResInfo(
             addressA,
-            dataToApplicant[step].randomNum as number,
+            dataToApplicant[step].randomNumAfter as number,
             dataToApplicant[step].r as string
         );
 
         // 改变状态
         dataToApplicant[step].status =
-            dataToApplicant[step].beforeChange === dataToApplicant[step].randomNum ? '随机数已上传' : '随机数错误';
+            dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter
+                ? '随机数已上传'
+                : '随机数错误';
         dataToApplicant[step].isUpload = true;
     } catch (error) {
         console.log(error);
@@ -190,8 +195,9 @@ watchEffect(async () => {
             dataFromApplicant[i].status === '随机数已上传' &&
             dataToApplicant[i].status === '随机数已上传' &&
             dataToApplicant[i].isUpload === true &&
-            dataToApplicant[i].beforeChange === dataToApplicant[i].randomNum &&
-            dataToApplicant[i].isReupload === false
+            dataToApplicant[i].randomNumBefore === dataToApplicant[i].randomNumAfter &&
+            dataToApplicant[i].isReupload === false &&
+            dataToApplicant[i].hasChecked === false
         ) {
             console.log(11111111111111);
             try {
@@ -202,18 +208,21 @@ watchEffect(async () => {
                 let writeFair = readOnlyFair.connect(wallet);
                 // 随机数检查
                 let { from: addressA, index, tA, tB } = dataFromApplicant[i];
-                let res = await writeFair.UnifiedInspection(addressA, myAddress, index, 1);
+                let res = await writeFair.callStatic.UnifiedInspection(addressA, myAddress, index, 1);
                 if (res === false) {
                     console.log('随机数错误');
                     // 重传
-                    let { ni, ri, hash } = getRandom(tA, tB);
-                    await writeFair.reuploadNum(addressA, index, 1, ni, ri);
+                    let { ni: niReuploaded, ri, hash } = getRandom(tA, tB);
+                    dataToApplicant[i].randomNumAfter = niReuploaded;
+                    await writeFair.reuploadNum(addressA, index, 1, niReuploaded, ri);
                     // 改变状态
-                    dataToApplicant[i].randomNum += '/' + ni;
+                    dataToApplicant[i].randomText = dataToApplicant[i].randomNumBefore + '/' + niReuploaded;
                     dataToApplicant[i].r = ri;
                     dataToApplicant[i].status = '随机数已重新上传';
                     dataToApplicant[i].isReupload = true;
                 } else console.log('随机数正确 ');
+
+                dataToApplicant[i].hasChecked === true;
             } catch (error) {
                 console.log(error);
             }

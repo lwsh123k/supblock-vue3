@@ -1,7 +1,5 @@
 <template>
     <div class="my-10">
-        <h1 class="my-5 text-center text-3xl">Fair Integer Generation Request</h1>
-
         <!-- 进度条 -->
         <el-steps :active="activeStep" finish-status="success">
             <el-step v-for="number in totalStep" :key="number" @click.native="toStep(number - 1)"></el-step>
@@ -39,10 +37,6 @@
                     </tr>
                 </template>
             </el-table>
-            <!-- <div class="absolute -bottom-16 right-0">
-                <el-button type="primary" @click="uploadHash" class="mr-5" size="large">生成随机数并上传hash</el-button>
-                <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
-            </div> -->
         </div>
 
         <!-- 控制按钮 -->
@@ -61,31 +55,9 @@
             </div>
         </div>
     </div>
-
-    <hr />
-
-    <div class="demo-collapse">
-        <el-collapse v-model="activeNames">
-            <el-collapse-item class="custom-collapse-item" title="Chain 1" name="1">
-                <div class="table-container">
-                    <FairIntTable :datas="datas" :relays="relays" />
-                </div>
-            </el-collapse-item>
-            <el-collapse-item title="Chain 2" name="2">
-                <div>chain 2</div>
-            </el-collapse-item>
-            <el-collapse-item title="Chain 3" name="3">
-                <div>chain 3</div>
-            </el-collapse-item>
-            <el-collapse-item title="Verify Signature" name="4">
-                <div>verify sig</div>
-            </el-collapse-item>
-        </el-collapse>
-    </div>
 </template>
 
 <script setup lang="ts">
-import { getAccountInfo } from '@/api';
 import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
@@ -97,19 +69,25 @@ import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
-import { setNextRelayInfo } from './FairIntegerGen/updateNextRelay';
-import FairIntTable from './FairIntegerGen/FairIntTable.vue';
+import { setNextRelayInfo } from './updateNextRelay';
+import type { DataItem, RelayAccount } from './types';
+
+// receive data from parent component
+const props = defineProps<{
+    datas: DataItem[][];
+    relays: RelayAccount[];
+}>();
+
+const { datas, relays } = props;
+console.log(props);
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
-let datas = applicantStore.datas;
-let relays = applicantStore.relays;
 const { resetCurrentStep } = applicantStore;
 const loginStore = useLoginStore();
 const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
 const totalStep = chainLength + 3;
 
-const popoverVisible = ref(true);
 // 页数跳转, 显示数据
 const activeStep = ref(0);
 function toStep(number: number) {
@@ -125,9 +103,6 @@ function prev() {
         activeStep.value--;
     }
 }
-
-// 折叠面板
-const activeNames = ref(['1']);
 
 // chian init
 function chainInit() {
@@ -345,24 +320,6 @@ watchEffect(async () => {
     }
 });
 
-// 使用第几个账号, 和谁交互
-async function getRelayNumber(current: number) {
-    let result;
-    if (current === 0 || current === totalStep - 1 || current === totalStep - 2) {
-        result = {
-            relayNumber: 0,
-            publicKey:
-                '0x374462096f4ccdc90b97c0201d0ad8ff67da224026dc20e61c107f577db537d049648511e4e922ce74a0ff7494eeac72317e60a48cb2a71af21e4e2258fcca36',
-            address: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'
-        };
-    } else {
-        let relayNumber = relays[current].relayNumber;
-        let accountInfo = await getAccountInfo(relayNumber);
-        result = { relayNumber, ...accountInfo };
-    }
-    return result;
-}
-
 // 处理长字符串
 function processLongString(str: string, startLength = 5, endLength = 3) {
     const maxLength = startLength + endLength + 3; // 加上3是因为省略号也占用长度
@@ -417,62 +374,9 @@ const nextRelayMessage = computed(() => {
     padding: 23px 0px;
     font-size: 20px;
 }
-/* 设置 Element Plus 表格行高 */
-/* :deep(.el-table .el-table__row) {
-    height: 100px;
-} */
+
 /* 右下角显示按钮 */
 .table-container {
     position: relative;
-}
-/* .table-buttons {
-    position: absolute;
-    right: 0px;
-    bottom: -60px;
-    margin: 10px;
-} */
-
-.table-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: auto;
-}
-
-.table-container > * {
-    transform: scale(0.98); /* 缩小到80% */
-    transform-origin: center center; /* 设置缩放原点 */
-}
-
-.table-container > * {
-    width: 100%;
-    height: 100%;
-}
-
-.el-collapse-item {
-    margin-bottom: 5px;
-}
-
-.el-collapse-item__header {
-    background-color: #007bff;
-    color: white;
-    padding: 10px;
-    border-radius: 4px 4px 0 0;
-    font-size: large;
-}
-
-.el-collapse-item__content {
-    padding: 10px;
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 0 0 4px 4px;
-}
-
-/* 使用深度作用选择器来设置所有标题的样式 */
-::v-deep .el-collapse-item__header {
-    padding: 20px;
-    font-weight: bold;
-    font-size: 20px; /* 设置字号 */
-    height: 80px; /* 设置标题高度 */
 }
 </style>

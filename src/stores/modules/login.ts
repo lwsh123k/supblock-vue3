@@ -17,8 +17,8 @@ interface AccountInfo {
     realNameAccount: Account;
     anonymousAccount: Account;
     accounts: Account[];
-    selectedNum: number[];
-    selectedAccount: Account[];
+    selectedNum: number[][]; // dim0: chain number; dim1: chain length
+    selectedAccount: Account[][];
 }
 interface SendInfo {
     r: string[];
@@ -33,6 +33,7 @@ interface RandomInfo {
 export const useLoginStore = defineStore('login', () => {
     // state
     const chainLength = 3;
+    const chainNumber = 3;
     const accountInfo: AccountInfo = reactive({
         realNameAccount: {} as Account,
         anonymousAccount: {} as Account,
@@ -41,12 +42,7 @@ export const useLoginStore = defineStore('login', () => {
         selectedAccount: []
     });
     const validatorAccount = '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba';
-    const sendInfo: SendInfo = reactive({
-        r: [],
-        b: [],
-        hashForward: [],
-        hashBackward: []
-    });
+    const sendInfo = reactive<SendInfo[]>([]);
 
     // 登录：随机选择账户, 发送socket登录, 发送blinding number到服务器端
     async function processAccount(privateKey: string[]) {
@@ -59,40 +55,54 @@ export const useLoginStore = defineStore('login', () => {
 
         // 如果是申请者的账户, 需要选择随机数, 预先计算需要的值
         if (privateKey.length === 102) {
-            for (let i = 0; i <= chainLength + 2; i++) {
-                // selectedTempAccount: [0, 100) + 2
-                let randomIndex = Math.floor(Math.random() * 100);
-                accountInfo.selectedNum.push(randomIndex + 2);
-                // b: fair-integer选出随机数之后, 加b, mod n
-                sendInfo.b.push(Math.floor(Math.random() * 100));
-                // r: hash时混淆
-                sendInfo.r.push(generateRandomByte(32));
-            }
-            // selectedTempAccount中第一个账户为real name account
-            accountInfo.selectedNum.pop();
-            accountInfo.selectedNum.unshift(0);
-            accountInfo.selectedAccount = accountInfo.selectedNum.map((item) => {
-                return accountInfo.accounts[item];
-            });
+            for (let i = 0; i < chainNumber; i++) {
+                for (let j = 0; j <= chainLength + 2; j++) {
+                    // selectedTempAccount: [0, 100) + 2
+                    let randomIndex = Math.floor(Math.random() * 100);
+                    accountInfo.selectedNum[i].push(randomIndex + 2);
+                    // b: fair-integer选出随机数之后, 加b, mod n
+                    sendInfo[i].b.push(Math.floor(Math.random() * 100));
+                    // r: hash时混淆
+                    sendInfo[i].r.push(generateRandomByte(32));
+                }
+                // selectedTempAccount中第一个账户为real name account
+                accountInfo.selectedNum[i].pop();
+                accountInfo.selectedNum[i].unshift(0);
+                accountInfo.selectedAccount[i] = accountInfo.selectedNum[i].map((item) => {
+                    return accountInfo.accounts[item];
+                });
 
-            // 计算hash
-            sendInfo.hashForward.push(keccak256(accountInfo.selectedAccount[0].address, sendInfo.r[0]));
-            for (let i = 1; i <= chainLength + 1; i++) {
-                sendInfo.hashForward.push(
-                    keccak256(accountInfo.selectedAccount[i].address, sendInfo.r[i], sendInfo.hashForward[i - 1])
+                // 计算hash
+                sendInfo[i].hashForward.push(keccak256(accountInfo.selectedAccount[i][0].address, sendInfo[i].r[0]));
+                for (let j = 1; j <= chainLength + 1; j++) {
+                    sendInfo[i].hashForward.push(
+                        keccak256(
+                            accountInfo.selectedAccount[i][j].address,
+                            sendInfo[i].r[j],
+                            sendInfo[i].hashForward[j - 1]
+                        )
+                    );
+                }
+                sendInfo[i].hashBackward.unshift(
+                    keccak256(accountInfo.selectedAccount[i][chainLength + 2].address, sendInfo[i].r[chainLength + 2])
                 );
-            }
-            sendInfo.hashBackward.unshift(
-                keccak256(accountInfo.selectedAccount[chainLength + 2].address, sendInfo.r[chainLength + 2])
-            );
-            // 计算反向hash时, 每次都将数据放到数组头部
-            for (let i = chainLength; i >= 0; i--) {
-                sendInfo.hashBackward.unshift(
-                    keccak256(accountInfo.selectedAccount[i + 1].address, sendInfo.r[i + 1], sendInfo.hashBackward[0])
-                );
+                // 计算反向hash时, 每次都将数据放到数组头部
+                for (let j = chainLength; j >= 0; j--) {
+                    sendInfo[i].hashBackward.unshift(
+                        keccak256(
+                            accountInfo.selectedAccount[i][j + 1].address,
+                            sendInfo[i].r[j + 1],
+                            sendInfo[i].hashBackward[0]
+                        )
+                    );
+                }
             }
         }
-        await socketLogin([accountInfo.realNameAccount, accountInfo.anonymousAccount, ...accountInfo.selectedAccount]);
+        await socketLogin([
+            accountInfo.realNameAccount,
+            accountInfo.anonymousAccount,
+            ...accountInfo.selectedAccount.flat()
+        ]);
         // 发送blinding number到服务器端
         if (privateKey.length === 102) {
             let appTempAccount = accountInfo.selectedAccount.map((val) => {
@@ -131,5 +141,5 @@ export const useLoginStore = defineStore('login', () => {
     // 退出登录
     function $reset() {}
 
-    return { chainLength, accountInfo, validatorAccount, sendInfo, processAccount };
+    return { chainLength, chainNumber, accountInfo, validatorAccount, sendInfo, processAccount };
 });

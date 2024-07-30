@@ -6,12 +6,18 @@ import { useLoginStore } from '@/stores/modules/login';
 export async function setNextRelayInfo(relays: RelayAccount[], nextRelayIndex: number, ni: number) {
     // 获取b
     const loginStore = useLoginStore();
-    const { sendInfo } = loginStore;
+    const { sendInfo, chainLength } = loginStore;
 
+    // not update the last two
+    if (nextRelayIndex > chainLength) {
+        console.log('not update the last two, default is validator');
+        return;
+    }
     // (n + b) % 100
     let b = sendInfo.b[nextRelayIndex - 1];
     relays[nextRelayIndex].b = b;
     relays[nextRelayIndex].relayFairInteger = ni;
+    relays[nextRelayIndex].relayNumber = (ni + b) % 100;
 
     let accountInfo = await getAccountInfo((ni + b) % 100);
     console.log('next relay real account info: ', accountInfo);

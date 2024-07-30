@@ -24,15 +24,17 @@ export const useRelayStore = defineStore('relayStore', () => {
     }
     interface RelayToAppData {
         role: string;
-        randomNum: number | string | null;
+        randomNumBefore: number; // 首次上传的随机数
         executionTime: number | string | null;
         r: string | null;
         hash: string;
         status: string;
         index: number | null;
-        beforeChange?: number | string; // 检查自己是否上传了错误的随机数
+        randomNumAfter: number; //发生错误重传的随机数
+        randomText: string; // table展示上传错误, 如: 24 / 72
         isUpload?: boolean;
         isReupload?: boolean;
+        hasChecked?: boolean;
     }
     interface RelayData {}
     const dataFromApplicant = reactive<AppToRelayData[]>([]); // 记录随机数请求

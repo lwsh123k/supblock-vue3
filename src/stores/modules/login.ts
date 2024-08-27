@@ -5,20 +5,25 @@ import { Buffer } from 'buffer';
 import { getAuthString } from '@/api';
 import { useSocketStore } from './socket';
 import { keccak256 } from '@/ethers/util';
-import { sendBlindingNumber, socketInit, socketMap } from '@/socket';
+import { socketInit } from '@/socket';
 import type { Socket } from 'socket.io-client';
 
-// 定义嵌套类型
+// nested type used in other interface
 interface Account {
     key: string;
     address: string;
 }
-interface AccountInfo {
+
+interface AllAccountInfo {
     realNameAccount: Account;
     anonymousAccount: Account;
     accounts: Account[];
-    selectedNum: number[][]; // dim0: chain number; dim1: chain length
-    selectedAccount: Account[][];
+}
+
+// one chain info
+interface TempAccountInfo {
+    selectedNum: number[];
+    selectedAccount: Account[];
 }
 interface SendInfo {
     r: string[];
@@ -34,63 +39,92 @@ export const useLoginStore = defineStore('login', () => {
     // state
     const chainLength = 3;
     const chainNumber = 3;
-    const accountInfo: AccountInfo = reactive({
+
+    // 所有账号信息
+    const allAccountInfo = reactive<AllAccountInfo>({
         realNameAccount: {} as Account,
         anonymousAccount: {} as Account,
-        accounts: [],
-        selectedNum: [],
-        selectedAccount: []
+        accounts: []
     });
-    const validatorAccount = '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba';
-    const sendInfo = reactive<SendInfo[]>([]);
+    // 多链账号temp account信息. dim0: chain number; dim1: specific chain info
+    const tempAccountInfo = reactive<TempAccountInfo[]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => {
+                return { selectedNum: [], selectedAccount: [] };
+            })
+    );
+    const sendInfo = reactive<SendInfo[]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => {
+                return { r: [], b: [], hashForward: [], hashBackward: [] };
+            })
+    );
+    const validatorAccount = '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'; // validator account
 
     // 登录：随机选择账户, 发送socket登录, 发送blinding number到服务器端
     async function processAccount(privateKey: string[]) {
         // 使account变为{key, address}的格式
-        accountInfo.accounts = privateKey.map((item) => {
+        allAccountInfo.accounts = privateKey.map((item) => {
             return { key: item, address: ethers.utils.computeAddress(item) };
         });
-        accountInfo.realNameAccount = accountInfo.accounts[0];
-        accountInfo.anonymousAccount = accountInfo.accounts[1];
+        allAccountInfo.realNameAccount = allAccountInfo.accounts[0];
+        allAccountInfo.anonymousAccount = allAccountInfo.accounts[1];
 
         // 如果是申请者的账户, 需要选择随机数, 预先计算需要的值
         if (privateKey.length === 102) {
             for (let i = 0; i < chainNumber; i++) {
                 for (let j = 0; j <= chainLength + 2; j++) {
-                    // selectedTempAccount: [0, 100) + 2
-                    let randomIndex = Math.floor(Math.random() * 100);
-                    accountInfo.selectedNum[i].push(randomIndex + 2);
+                    // select different temp account index: [0, 100) + 2, the first two is real and anonymous account
+                    let randomIndex;
+                    do {
+                        randomIndex = Math.floor(Math.random() * 100);
+                    } while (tempAccountInfo[i].selectedNum.includes(randomIndex + 2));
+                    // to use the push method, it must be a array first.
+                    tempAccountInfo[i].selectedNum.push(randomIndex + 2);
+
                     // b: fair-integer选出随机数之后, 加b, mod n
-                    sendInfo[i].b.push(Math.floor(Math.random() * 100));
+                    let randomB;
+                    do {
+                        randomB = Math.floor(Math.random() * 100); // Ensure unique b
+                    } while (sendInfo[i].b.includes(randomB));
+                    sendInfo[i].b.push(randomB);
+
                     // r: hash时混淆
                     sendInfo[i].r.push(generateRandomByte(32));
                 }
                 // selectedTempAccount中第一个账户为real name account
-                accountInfo.selectedNum[i].pop();
-                accountInfo.selectedNum[i].unshift(0);
-                accountInfo.selectedAccount[i] = accountInfo.selectedNum[i].map((item) => {
-                    return accountInfo.accounts[item];
+                tempAccountInfo[i].selectedNum.pop();
+                tempAccountInfo[i].selectedNum.unshift(0);
+                tempAccountInfo[i].selectedAccount = tempAccountInfo[i].selectedNum.map((item) => {
+                    return allAccountInfo.accounts[item];
                 });
 
                 // 计算hash
-                sendInfo[i].hashForward.push(keccak256(accountInfo.selectedAccount[i][0].address, sendInfo[i].r[0]));
+                sendInfo[i].hashForward.push(
+                    keccak256(tempAccountInfo[i].selectedAccount[0].address, sendInfo[i].r[0])
+                );
                 for (let j = 1; j <= chainLength + 1; j++) {
                     sendInfo[i].hashForward.push(
                         keccak256(
-                            accountInfo.selectedAccount[i][j].address,
+                            tempAccountInfo[i].selectedAccount[j].address,
                             sendInfo[i].r[j],
                             sendInfo[i].hashForward[j - 1]
                         )
                     );
                 }
                 sendInfo[i].hashBackward.unshift(
-                    keccak256(accountInfo.selectedAccount[i][chainLength + 2].address, sendInfo[i].r[chainLength + 2])
+                    keccak256(
+                        tempAccountInfo[i].selectedAccount[chainLength + 2].address,
+                        sendInfo[i].r[chainLength + 2]
+                    )
                 );
                 // 计算反向hash时, 每次都将数据放到数组头部
                 for (let j = chainLength; j >= 0; j--) {
                     sendInfo[i].hashBackward.unshift(
                         keccak256(
-                            accountInfo.selectedAccount[i][j + 1].address,
+                            tempAccountInfo[i].selectedAccount[j + 1].address,
                             sendInfo[i].r[j + 1],
                             sendInfo[i].hashBackward[0]
                         )
@@ -98,19 +132,13 @@ export const useLoginStore = defineStore('login', () => {
                 }
             }
         }
-        await socketLogin([
-            accountInfo.realNameAccount,
-            accountInfo.anonymousAccount,
-            ...accountInfo.selectedAccount.flat()
-        ]);
-        // 发送blinding number到服务器端
-        if (privateKey.length === 102) {
-            let appTempAccount = accountInfo.selectedAccount.map((val) => {
-                return val.address;
-            });
-            let socket0 = socketMap.get(accountInfo.realNameAccount.address);
-            await sendBlindingNumber(socket0, sendInfo.b, appTempAccount);
+
+        // using socket to login
+        let accountNeedLogin = [allAccountInfo.realNameAccount, allAccountInfo.anonymousAccount];
+        for (let j = 0; j < chainNumber; j++) {
+            accountNeedLogin.push(...tempAccountInfo[j].selectedAccount);
         }
+        await socketLogin(accountNeedLogin);
     }
 
     // socket登录:
@@ -141,5 +169,5 @@ export const useLoginStore = defineStore('login', () => {
     // 退出登录
     function $reset() {}
 
-    return { chainLength, chainNumber, accountInfo, validatorAccount, sendInfo, processAccount };
+    return { chainLength, chainNumber, allAccountInfo, tempAccountInfo, validatorAccount, sendInfo, processAccount };
 });

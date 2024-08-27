@@ -33,15 +33,22 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     // 表格数据项, 需要初始化其中的数据
     let { chainLength, chainNumber } = useLoginStore();
     // dim0: chain number; dim1: chain length; dim3: table row data
-    let datas = reactive<DataItem[][][]>([]);
+    let datas = reactive<DataItem[][][]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => [])
+    );
     for (let i = 0; i < chainNumber; i++) {
         for (let j = 0; j <= chainLength + 2; j++) {
             resetCurrentStep(datas[i], j);
         }
     }
     // 初始化数据的函数
-    function resetCurrentStep(tableData: DataItem[][], chianIndex: number) {
-        tableData[chianIndex] = [
+    function resetCurrentStep(tableData: DataItem[][], stepIndex: number) {
+        if (!tableData[stepIndex]) {
+            tableData[stepIndex] = [];
+        }
+        tableData[stepIndex] = [
             {
                 role: 'appliacnt',
                 address: '',
@@ -74,7 +81,11 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     }
 
     // 定义并初始化relay信息. 第一维: 链的个数, 第二维: 链的长度
-    let relays = reactive<RelayAccount[][]>([]);
+    let relays = reactive<RelayAccount[][]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => [])
+    );
     for (let i = 0; i < chainNumber; i++) {
         // 第一个为 validator
         relays[i][0] = {
@@ -105,7 +116,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     }
 
     // 定义当前relayIndex, 即applicant正在和第几个relay通信
-    let relayIndex = reactive(Array(chainNumber).fill(0));
+    let relayIndex = reactive<number[]>(Array(chainNumber).fill(0));
 
     // 重置
     function $reset() {}

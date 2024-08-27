@@ -1,5 +1,5 @@
 <template>
-    <div class="my-20">
+    <div id="bridge-id" class="my-20">
         <h1 class="my-20 text-center text-3xl">Fair Integer Generation Response</h1>
 
         <!-- 表格展示 -->
@@ -34,6 +34,15 @@
         <!-- 控制按钮 -->
         <div class="mt-10">
             <div class="float-right">
+                <el-switch
+                    v-model="useFakeData"
+                    inline-prompt
+                    id="fabricate-data"
+                    class="custom-switch mr-5"
+                    active-text="使用伪造数据"
+                    inactive-text="使用真实数据"
+                    active-color="#ff4949"
+                    inactive-color="#13ce66" />
                 <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
                     >生成随机数并上传hash</el-button
                 >
@@ -51,15 +60,16 @@ import { getRandom } from '@/ethers/util';
 import { useRelayStore } from '@/stores/modules/relay';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
-import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, reactive, ref, toRef, toRefs, watchEffect } from 'vue';
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
-const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
+const { chainLength, allAccountInfo, validatorAccount, sendInfo } = loginStore;
 const relayStore = useRelayStore();
 const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
 const dataFromApplicant = relayStore.dataFromApplicant;
+const useFakeData = toRef(relayStore, 'useFakeData');
+
 const totalStep = chainLength + 3;
 
 // 使用计算属性合并
@@ -96,7 +106,7 @@ async function uploadHashAndListen() {
     // 额外判断, 防止误点, 判断对方是否已经上传hash 或者 已经上传过随机数
     if (!dataFromApplicant[step]?.hash || dataToApplicant[step]?.isUpload) return;
 
-    let { key: privateKey, address: addressB } = accountInfo.anonymousAccount;
+    let { key: privateKey, address: addressB } = allAccountInfo.anonymousAccount;
     let addressA = dataFromApplicant[step].from;
 
     // 创建合约实例
@@ -162,7 +172,7 @@ async function uploadHashAndListen() {
 async function uploadRandomNum() {
     try {
         let step = activeStep.value;
-        let { key: privateKey } = accountInfo.anonymousAccount;
+        let { key: privateKey } = allAccountInfo.anonymousAccount;
 
         // 创建合约实例
         const readOnlyFair = await getFairIntGen();
@@ -202,7 +212,7 @@ watchEffect(async () => {
             console.log(11111111111111);
             try {
                 // 创建合约实例
-                let { key: privateKey, address: myAddress } = accountInfo.anonymousAccount;
+                let { key: privateKey, address: myAddress } = allAccountInfo.anonymousAccount;
                 const readOnlyFair = await getFairIntGen();
                 const wallet = new Wallet(privateKey, provider);
                 let writeFair = readOnlyFair.connect(wallet);
@@ -268,5 +278,19 @@ watchEffect(async () => {
     bottom: -60px;
     margin: 10px;
 } */
+
+/* 开关按钮样式 */
+.custom-switch :deep(.el-switch__label) {
+    color: #833274;
+    font-weight: bold;
+}
+
+.custom-switch :deep(.el-switch__core) {
+    width: 120px; /* 宽度 */
+    height: 40px; /* 高度 */
+}
+.custom-switch :deep(.el-switch__button) {
+    width: 28px; /* 按钮宽度 */
+    height: 28px; /* 按钮高度 */
+}
 </style>
-@/stores/modules/login @/stores/modules/relayEventListen

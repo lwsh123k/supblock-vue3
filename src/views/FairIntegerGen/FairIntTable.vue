@@ -2,7 +2,7 @@
     <div class="my-10">
         <!-- 进度条 -->
         <el-steps :active="activeStep" finish-status="success">
-            <el-step v-for="number in totalStep" :key="number" @click.native="toStep(number - 1)"></el-step>
+            <el-step v-for="number in totalStep - 3" :key="number" @click.native="toStep(number - 1)"></el-step>
         </el-steps>
 
         <!-- 表格展示 -->
@@ -71,21 +71,36 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, RelayAccount } from './types';
+import { send2Extension } from './send2Extension';
 
 // receive data from parent component
 const props = defineProps<{
     datas: DataItem[][];
     relays: RelayAccount[];
+    oneChainSendInfo: {
+        r: string[];
+        b: number[];
+        hashForward: string[];
+        hashBackward: string[];
+    };
+    oneChainTempAccount: {
+        selectedNum: number[];
+        selectedAccount: {
+            key: string;
+            address: string;
+        }[];
+    };
+    chainNumber: number; // 标识这是第几条链
 }>();
 
-const { datas, relays } = props;
+const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainNumber } = props;
 console.log(props);
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
 const { resetCurrentStep } = applicantStore;
 const loginStore = useLoginStore();
-const { chainLength, accountInfo, validatorAccount, sendInfo } = loginStore;
+const { chainLength, validatorAccount } = loginStore;
 const totalStep = chainLength + 3;
 
 // 页数跳转, 显示数据
@@ -106,23 +121,23 @@ function prev() {
 
 // chian init
 function chainInit() {
-    let tempAddress0 = accountInfo.selectedAccount[0].address;
+    let tempAddress0 = oneChainTempAccount.selectedAccount[0].address;
     let socket0 = socketMap.get(tempAddress0);
     if (socket0) appSendInitData(socket0);
     else throw new Error('socket not found when chain initialize');
 }
 
 // hash上传
-let { relayIndex } = storeToRefs(applicantStore);
+let { relayIndex } = applicantStore;
 async function uploadHashAndListen() {
-    let currentStep = relayIndex.value; // interact with which relay
+    let currentStep = relayIndex[chainNumber]; // interact with which relay
 
     // 只能上传对应的
     if (activeStep.value != currentStep) return;
     let step = currentStep;
-    resetCurrentStep(step);
+    resetCurrentStep(datas, step);
     // applicant: temp account, relay: anonymous account
-    let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
+    let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
     let addressB = relays[step].anonymousAccount;
     console.log(`applicant interacting with ${addressB}: hash upload`);
     // 创建合约实例
@@ -152,6 +167,10 @@ async function uploadHashAndListen() {
     datas[step][0].isReupload = false;
     // 更新表格
     datas[step][0].randomText = ni.toString();
+
+    // send to server when hash uploads
+    let b = oneChainSendInfo.b[currentStep];
+    await send2Extension(addressA, addressB, hash, b);
 
     //上传hash
     console.log(hash);
@@ -239,7 +258,7 @@ async function uploadRandomNum() {
 
     try {
         // 选择使用哪个账号上传hash, 和谁交互
-        let { key: privateKey, address: addressA } = accountInfo.selectedAccount[step];
+        let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
         let addressB = relays[step].anonymousAccount;
 
         // 创建合约实例
@@ -287,7 +306,7 @@ watchEffect(async () => {
             if (result === false) {
                 console.log('随机数错误');
                 // applicant: temp account, relay: anonymous account
-                let { key: privateKey, address: addressA } = accountInfo.selectedAccount[i];
+                let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[i];
                 let addressB = relays[i].anonymousAccount;
                 const readOnlyFair = await getFairIntGen();
                 const wallet = new Wallet(privateKey, provider);
@@ -329,7 +348,7 @@ function processLongString(str: string, startLength = 5, endLength = 3) {
     return str;
 }
 
-// next relay
+// display next relay info
 const nextRelayMessage = computed(() => {
     let step = activeStep.value;
 
@@ -344,8 +363,8 @@ const nextRelayMessage = computed(() => {
         // selected relay
         else
             return (
-                `next relay: (fair integer: ${relays[activeStep.value + 1].relayFairInteger} + blinding number: ${sendInfo.b[activeStep.value]}) % 100 = ` +
-                `${(relays[activeStep.value + 1].relayFairInteger + sendInfo.b[activeStep.value]) % 100}`
+                `next relay: (fair integer: ${relays[activeStep.value + 1].relayFairInteger} + blinding number: ${oneChainSendInfo.b[activeStep.value]}) % 100 = ` +
+                `${(relays[activeStep.value + 1].relayFairInteger + oneChainSendInfo.b[activeStep.value]) % 100}`
             );
     }
 });

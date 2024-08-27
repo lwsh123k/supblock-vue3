@@ -38,11 +38,14 @@ export const useRelayStore = defineStore('relayStore', () => {
     }
     interface RelayData {}
     const dataFromApplicant = reactive<AppToRelayData[]>([]); // 记录随机数请求
-    const dataToApplicant = reactive<RelayToAppData[]>([]); // 记录随机数响应
+    const dataToApplicant = reactive<Partial<RelayToAppData>[]>([]); // 记录随机数响应
     const dataFromRelay = null; // relay发来的信息
+
+    // 是否使用数据
+    let useFakeData = ref(false);
 
     // 重置
     function $reset() {}
 
-    return { dataFromApplicant, dataFromRelay, dataToApplicant };
+    return { dataFromApplicant, dataFromRelay, dataToApplicant, useFakeData };
 });

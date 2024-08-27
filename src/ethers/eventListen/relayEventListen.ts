@@ -15,13 +15,13 @@ import {
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen(realNameAddress: string, anonymousAddress: string) {
     // 从store中获取数据
-    const { chainLength, accountInfo, validatorAccount, sendInfo } = useLoginStore();
+    const { chainLength, allAccountInfo, validatorAccount, sendInfo } = useLoginStore();
     const relayStore = useRelayStore();
     const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
     const dataFromApplicant = relayStore.dataFromApplicant;
 
-    // listen hash upload, using anonymous account
-    let { key: privateKey } = accountInfo.anonymousAccount;
+    // relay using anonymous account: listen hash upload
+    let { key: privateKey } = allAccountInfo.anonymousAccount;
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
@@ -42,7 +42,6 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
         });
         dataToApplicant.push({
             role: 'relay',
-            randomNum: null,
             executionTime: tB.toString(),
             r: null,
             hash: '',
@@ -53,7 +52,7 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
         });
     });
 
-    // listen app -> next, current -> next, using real name account
+    // next relay listening: app -> next, current -> next, using real name account
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
@@ -61,7 +60,7 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
         console.log('监听到app to next relay消息');
 
         // decode and save. 解码的数据中包含applicant下次要用的账号
-        let decodedData: AppToRelayData = await getDecryptData(accountInfo.realNameAccount.key, data);
+        let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
         let { from: from1, to, appTempAccount, r, hf, hb, b, c } = decodedData;
         console.log(decodedData);
 
@@ -80,7 +79,7 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
     storeData.on(pre2Nextfilter, async (form, relay, data, dataIndex) => {
         console.log('监听到pre relay to next relay消息, data: ');
         // 收到的数据中包含pre applicant temp account
-        let decodedData: PreToNextRelayData = await getDecryptData(accountInfo.realNameAccount.key, data);
+        let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
         let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
         console.log(decodedData);
 

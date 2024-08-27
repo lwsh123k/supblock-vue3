@@ -8,7 +8,7 @@
 
         <div class="upload">
             <!-- 文件上传按钮 -->
-            <div v-show="!accountInfo.realNameAccount.address">
+            <div v-show="!allAccountInfo.realNameAccount.address">
                 <div @click="triggerFileInput" class="uploadButton nav-link">Connect Wallet</div>
                 <input
                     type="file"
@@ -18,18 +18,29 @@
                     style="display: none" />
             </div>
             <!-- 展示账号详情 -->
-            <div v-if="accountInfo.realNameAccount.address">
+            <div v-if="allAccountInfo.realNameAccount.address">
                 <div class="uploadButton nav-link hide">
-                    {{ accountInfo.realNameAccount['address'] }}
+                    {{ allAccountInfo.realNameAccount['address'] }}
                 </div>
                 <div class="moreinfo">
                     <ul>
                         <!-- <li>real name:{{ realNameAccount["address"] }}</li> -->
-                        <li>anonymous:</li>
-                        <li>{{ accountInfo.anonymousAccount['address'] }}</li>
+                        <li>anonymous account:</li>
+                        <li>{{ allAccountInfo.anonymousAccount['address'] }}</li>
+                        <hr />
                         <ul>
-                            <li>temp:</li>
-                            <li v-for="(item, index) in accountInfo.selectedAccount" :key="index">
+                            <li>temp account for chain 1:</li>
+                            <li v-for="(item, index) in tempAccountInfo[0].selectedAccount" :key="index">
+                                {{ item['address'] }}
+                            </li>
+                            <hr />
+                            <li>temp account for chain 2:</li>
+                            <li v-for="(item, index) in tempAccountInfo[1].selectedAccount" :key="index">
+                                {{ item['address'] }}
+                            </li>
+                            <hr />
+                            <li>temp account for chain 3:</li>
+                            <li v-for="(item, index) in tempAccountInfo[2].selectedAccount" :key="index">
                                 {{ item['address'] }}
                             </li>
                         </ul>
@@ -56,7 +67,7 @@ import { backendListen } from '@/ethers/eventListen/relayEventListen';
 import { ethers } from 'ethers';
 
 const loginStore = useLoginStore();
-const { accountInfo } = storeToRefs(loginStore);
+const { tempAccountInfo, allAccountInfo } = storeToRefs(loginStore);
 
 // 文件处理方法
 // 声明一个 ref 来存放该元素的引用

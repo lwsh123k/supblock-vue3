@@ -1,5 +1,5 @@
 <template>
-    <div id="bridge-id" class="my-20">
+    <div class="my-20">
         <h1 class="my-20 text-center text-3xl">Fair Integer Generation Response</h1>
 
         <!-- 表格展示 -->
@@ -140,8 +140,9 @@ async function uploadHashAndListen() {
     try {
         let result = await listenReqNum(addressA, addressB);
         console.log('监听到了随机数', result);
-        dataFromApplicant[step].randomNum = result.ni;
-        console.log(dataFromApplicant[step].randomNum);
+        dataFromApplicant[step].randomNumBefore = result.ni;
+        dataFromApplicant[step].randomText = result.ni;
+        console.log('app uploaded random num to relay: ', dataFromApplicant[step].randomNumBefore);
         dataFromApplicant[step].r = result.ri;
         dataFromApplicant[step].tA = result.t;
         dataFromApplicant[step].status = '随机数已上传';

@@ -8,6 +8,7 @@ export type AppToRelayData = {
     hb: null | string;
     b: null | number;
     c: null | number;
+    chainIndex: number;
 };
 
 // current relay -> next relay
@@ -21,6 +22,13 @@ export type PreToNextRelayData = {
     b: null | number;
     n: null | number;
     t: null | string; // ??????????
+};
+
+export type RelayResDate = {
+    from: string;
+    to: string;
+    nextRelayAnonymousAccount: string;
+    chainIndex: number;
 };
 
 // type: pre applicant temp   and   pre relay -> next relay

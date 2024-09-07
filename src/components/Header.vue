@@ -2,7 +2,7 @@
     <div class="flex items-center border-b-2 border-solid border-stone-500 pb-1">
         <!-- 顶部路由链接 -->
         <router-link to="/authentication" class="nav-link">Authentication</router-link>
-        <router-link to="/bridge" class="nav-link" exact>Bridge</router-link>
+        <router-link to="/bridge" id="bridge-id" class="nav-link">Bridge</router-link>
         <router-link to="/transfer" class="nav-link">Transfer</router-link>
         <router-link to="/stats" class="nav-link">Stats</router-link>
 
@@ -98,10 +98,8 @@ function handleFileChange(event: Event) {
                 await loginStore.processAccount(lines);
                 // 更改网页title
                 document.title = file.name.replace('account', '').replace('.txt', '');
-                // 开启监听
-                let realNameAccount = ethers.utils.computeAddress(lines[0]);
-                let anonymousAccount = ethers.utils.computeAddress(lines[1]);
-                backendListen(realNameAccount, anonymousAccount);
+                // relay listens hash, pre relay info, pre app info
+                backendListen();
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();
             } catch (e) {

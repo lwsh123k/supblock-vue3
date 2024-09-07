@@ -13,25 +13,26 @@ import {
 } from '../chainData/chainDataType';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
-export async function backendListen(realNameAddress: string, anonymousAddress: string) {
-    // 从store中获取数据
-    const { chainLength, allAccountInfo, validatorAccount, sendInfo } = useLoginStore();
+export async function backendListen() {
+    // get data from store
+    const { allAccountInfo } = useLoginStore();
     const relayStore = useRelayStore();
     const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
     const dataFromApplicant = relayStore.dataFromApplicant;
 
-    // relay using anonymous account: listen hash upload
-    let { key: privateKey } = allAccountInfo.anonymousAccount;
+    // relay listening: hash upload, using anonymous account
+    let { address: anonymousAddress } = allAccountInfo.anonymousAccount;
+    let { address: realNameAddress } = allAccountInfo.realNameAccount;
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
-        console.log('监听到了hash, ', from, to, infoHash, tA, tB, uploadTime, index);
-        let len = dataFromApplicant.length;
+        console.log('app -> relay: hash upload, ', from, to, infoHash, tA, tB, uploadTime, index);
         dataFromApplicant.push({
             role: 'applicant',
             from: from,
             to: to,
-            randomNum: null,
+            randomNumBefore: null,
+            randomText: null,
             executionTime: tA.toNumber(),
             tA: tA.toNumber(),
             tB: tB.toNumber(),
@@ -52,7 +53,7 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
         });
     });
 
-    // next relay listening: app -> next, current -> next, using real name account
+    // next relay listening: app -> next, using real name account
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
@@ -74,7 +75,7 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
         checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
     });
 
-    // pre relay -> next relay信息
+    // next relay listening: current relay -> next relay, using real name account
     let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, realNameAddress);
     storeData.on(pre2Nextfilter, async (form, relay, data, dataIndex) => {
         console.log('监听到pre relay to next relay消息, data: ');
@@ -92,8 +93,8 @@ export async function backendListen(realNameAddress: string, anonymousAddress: s
 function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) {
     let savedData = relayReceivedData.get(preAppTempAccount);
 
-    // 一开始就没有数据
-    if (savedData === undefined) {
+    // 一开始就没有数据 or overwrite previous data
+    if (savedData === undefined || (savedData.appToRelayData && savedData.preToNextRelayData)) {
         savedData = {};
         console.log('no data', preAppTempAccount);
     }
@@ -134,20 +135,22 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
 
 function verifyData(data: CombinedData) {
     if (!data.appToRelayData || !data.preToNextRelayData) return false;
-    // 验证随机数???????
+    // 验证随机数(每个账号都知道自己的唯一标识)
     let b = data.preToNextRelayData.b,
         n = data.preToNextRelayData.n;
     if (!b || !n) return false;
     let rnd = (b + n) % 100;
 
-    // 验证hash
+    // 验证hash, 只有正向hash可以验证
     let hf = data.appToRelayData.hf,
         preHf = data.preToNextRelayData.hf,
         r = data.appToRelayData.r,
         appTempAccount = data.appToRelayData.appTempAccount;
     if (!hf || !preHf || !r || !appTempAccount) return false;
     let res1 = verifyHashForward(appTempAccount, r, hf, preHf);
-    console.log('res1: ', res1);
+    console.log('data to next relay verification result: ', res1);
+
+    // 数据不够, 只能验证正向hash
     let hb = data.preToNextRelayData.hb,
         nextHb = data.appToRelayData.hb;
     // r = data.appToRelayData.r, 没有r, 无法验证反向hash

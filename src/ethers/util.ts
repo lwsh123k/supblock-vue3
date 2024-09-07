@@ -47,7 +47,7 @@ export function getRandom(tA: number, tB: number) {
 
 // 使用对方公钥加密
 // 加密: 传入对象, 将对象 -> json字符串 -> 加密对象 -> 字符串
-// 返回的16进制加上0x前缀
+// 返回的16进制加上0x前缀(grpc: binding number, r)
 export async function getEncryptData(publicKey: string, data: any) {
     let jsonData = JSON.stringify(data);
     let encryptedData = await EthCrypto.encryptWithPublicKey(publicKey, jsonData);

@@ -116,6 +116,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     }
 
     // 定义当前relayIndex, 即applicant正在和第几个relay通信
+    // one dimension array, each element in it represents a relay index
     let relayIndex = reactive<number[]>(Array(chainNumber).fill(0));
 
     // 重置

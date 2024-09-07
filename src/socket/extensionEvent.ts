@@ -33,30 +33,30 @@ export function bindExtension(socket: Socket) {
 
     // 从login store获取账号信息, 具体使用哪个账号和next relay发送消息
     const loginStore = useLoginStore();
-    const { chainLength, allAccountInfo, validatorAccount, sendInfo, chainNumber, tempAccountInfo } = loginStore;
+    const { chainLength, allAccountInfo, chainNumber, tempAccountInfo } = loginStore;
 
-    // applicant -> relay: b, r, temp account
-    // need to know: which chain and which relay, 即relayIndex
+    // extension to app: new tab has opened.
+    // then, current anonymous applicant -> next real name relay: b, r, temp account
     socket.on('new tab opening finished to applicant', async (data1: NumInfo) => {
         try {
             let { blindedFairIntNum, relay: preRelayAddress, hashOfApplicant } = data1;
             console.log('extension -> applicant, next relay number: ', blindedFairIntNum);
-            console.log('relay index', relayIndex.value);
-            // which chain
+            // need to know: which chain and which relay through unique hash
             let chainId = -1;
             for (let i = 0; i < chainNumber; i++) {
                 for (let j = 0; j <= chainLength + 2; j++) {
-                    if (datas[i][i][0].hash === hashOfApplicant) {
+                    if (datas[i][j][0].hash === hashOfApplicant) {
                         chainId = i;
                         break;
                     }
                 }
             }
-            if (chainId === -1) throw new Error('not found hash in chains');
-            let index = relayIndex.value[chainId];
+            if (chainId === -1)
+                throw new Error(`not found hash in chains, received hash of applicant: ${hashOfApplicant}`);
+            let specificRelayIndex = relayIndex.value[chainId];
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
-            let data = getApp2RelayData(index + 1); // 获得下一轮需要的数据
+            let data = getApp2RelayData(chainId, specificRelayIndex + 1); // 获得下一轮需要的数据
             let accountAddress = await getAccountInfo(blindedFairIntNum);
             data.to = accountAddress.address;
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
@@ -64,7 +64,7 @@ export function bindExtension(socket: Socket) {
 
             // applicant使用当前轮的temp account, 给next relay发送下一轮的app tmep account
             let readOnlyStoreData = await getStoreData();
-            let { key: privateKey, address: addressA } = tempAccountInfo[chainId].selectedAccount[index]; // 当前轮的temp account
+            let { key: privateKey, address: addressA } = tempAccountInfo[chainId].selectedAccount[specificRelayIndex]; // 当前轮的temp account
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             await writeStoreData.setApp2Relay(relayAddress, encryptedData);
 
@@ -75,13 +75,14 @@ export function bindExtension(socket: Socket) {
         }
     });
 
-    // pre relay -> next relay
+    // extension to current relay
+    // then, current anonymous relay -> next real name relay
     socket.on('new tab opening finished to pre relay', async (data1: NumInfo) => {
         try {
             let { blindedFairIntNum, applicant: applicantAddress, relay: preRelayAddress } = data1;
             console.log('extension -> pre relay, next relay number: ', blindedFairIntNum);
 
-            // pre anonymous relay -> next real name relay: 获取对方的公钥, 需要发送的信息
+            // current anonymous relay -> next real name relay: 获取对方的公钥, 需要发送的信息
             let { key: privateKey, address: preRelayAnonymousAccount } = allAccountInfo.anonymousAccount;
             let accountAddress = await getAccountInfo(blindedFairIntNum);
             let relayAddress = accountAddress.address;

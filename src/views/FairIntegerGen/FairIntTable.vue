@@ -63,7 +63,7 @@ import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
 import { getHash, getRandom } from '@/ethers/util';
 import { socketMap } from '@/socket';
-import { appSendInitData } from '@/socket/chainData';
+import { appSendInitData, send2Extension } from '@/socket/applicantSocketEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
@@ -71,7 +71,6 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, RelayAccount } from './types';
-import { send2Extension } from './send2Extension';
 
 // receive data from parent component
 const props = defineProps<{
@@ -90,11 +89,11 @@ const props = defineProps<{
             address: string;
         }[];
     };
-    chainNumber: number; // 标识这是第几条链
+    chainId: number; // 标识这是第几条链
 }>();
 
-const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainNumber } = props;
-console.log(props);
+const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainId } = props;
+// console.log(props);
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
@@ -121,16 +120,18 @@ function prev() {
 
 // chian init
 function chainInit() {
-    let tempAddress0 = oneChainTempAccount.selectedAccount[0].address;
-    let socket0 = socketMap.get(tempAddress0);
-    if (socket0) appSendInitData(socket0);
-    else throw new Error('socket not found when chain initialize');
+    try {
+        let appTemp0Address = oneChainTempAccount.selectedAccount[0].address;
+        appSendInitData(chainId, appTemp0Address);
+    } catch (error) {
+        console.log(error);
+    }
 }
 
 // hash上传
 let { relayIndex } = applicantStore;
 async function uploadHashAndListen() {
-    let currentStep = relayIndex[chainNumber]; // interact with which relay
+    let currentStep = relayIndex[chainId]; // interact with which relay of which chain id
 
     // 只能上传对应的
     if (activeStep.value != currentStep) return;
@@ -144,7 +145,7 @@ async function uploadHashAndListen() {
     const readOnlyFair = await getFairIntGen();
     let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
 
-    await getCurrentBlockTime();
+    // await getCurrentBlockTime();
 
     // 生成随机数
     let result = await writeFair.getReqExecuteTime(addressB);
@@ -229,7 +230,7 @@ async function uploadHashAndListen() {
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
                 // set next relay number, update next relay info
-                await setNextRelayInfo(relays, ++currentStep, ni);
+                await setNextRelayInfo(chainId, ++currentStep, ni);
             }
         });
 
@@ -241,7 +242,7 @@ async function uploadHashAndListen() {
             datas[step][1].status = '随机数已重新上传';
             datas[step][1].randomText = datas[step][1].randomNumBefore + ' / ' + ni.toString();
             console.log('监听到relay重传随机数');
-            await setNextRelayInfo(relays, ++currentStep, ni);
+            await setNextRelayInfo(chainId, ++currentStep, ni);
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -326,11 +327,11 @@ watchEffect(async () => {
                 datas[i][0].isReupload = true;
                 // 设置next relay
                 let nextStep = i + 1;
-                await setNextRelayInfo(relays, nextStep, niReuploaded);
+                await setNextRelayInfo(chainId, nextStep, niReuploaded);
             } else {
                 let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 100;
                 let nextStep = i + 1;
-                await setNextRelayInfo(relays, nextStep, nextIndex);
+                await setNextRelayInfo(chainId, nextStep, nextIndex);
                 console.log('随机数正确 ');
             }
 

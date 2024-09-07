@@ -8,7 +8,7 @@ import { getAccountInfo } from '@/api';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { bindExtension } from './extensionEvent';
-import { appRecevieRelayData, appRecevieValidatorData } from './chainData';
+import { appRecevieRelayData, appRecevieValidatorData } from './applicantSocketEvent';
 
 // 每个正在使用的账号, 都要连接socket, 绑定extension, chain initialization事件
 // 在login store中初始化
@@ -33,6 +33,7 @@ export function socketInit(address: string, signedAuthString: string) {
         console.log('连接断开');
     });
 
+    // register socket event
     // extension event
     bindExtension(socket);
 

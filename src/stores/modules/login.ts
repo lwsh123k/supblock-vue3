@@ -138,6 +138,9 @@ export const useLoginStore = defineStore('login', () => {
         for (let j = 0; j < chainNumber; j++) {
             accountNeedLogin.push(...tempAccountInfo[j].selectedAccount);
         }
+
+        // array deduplication
+        accountNeedLogin = Array.from(new Map(accountNeedLogin.map((account) => [account.address, account])).values());
         await socketLogin(accountNeedLogin);
     }
 

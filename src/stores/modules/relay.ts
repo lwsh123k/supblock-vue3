@@ -13,7 +13,8 @@ export const useRelayStore = defineStore('relayStore', () => {
         role: string;
         from: string;
         to: string;
-        randomNum: number | string | null;
+        randomNumBefore: number | string | null;
+        randomText: number | string | null;
         tA: number;
         tB: number;
         executionTime: number | string | null;

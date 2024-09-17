@@ -37,7 +37,7 @@ interface RandomInfo {
 }
 export const useLoginStore = defineStore('login', () => {
     // state
-    const chainLength = 3;
+    const chainLength = 4;
     const chainNumber = 3;
 
     // 所有账号信息

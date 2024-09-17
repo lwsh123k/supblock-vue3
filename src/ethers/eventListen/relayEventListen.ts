@@ -11,6 +11,8 @@ import {
     type CombinedData,
     type PreToNextRelayData
 } from '../chainData/chainDataType';
+import { relaySendFinalData } from '@/socket/relayEvent';
+import { getPre2NextData, getRelayFinalData } from '../chainData/getPre2NextData';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen() {
@@ -57,11 +59,12 @@ export async function backendListen() {
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
-    storeData.on(app2Relayfilter, async (from, relay, data, dataIndex) => {
+    storeData.on(app2Relayfilter, async (from, relay, data, dataIndex, lastRelay) => {
         console.log('监听到app to next relay消息');
 
         // decode and save. 解码的数据中包含applicant下次要用的账号
         let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
+        decodedData.lastUserRelay = lastRelay;
         let { from: from1, to, appTempAccount, r, hf, hb, b, c } = decodedData;
         console.log(decodedData);
 
@@ -91,12 +94,12 @@ export async function backendListen() {
 }
 
 function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) {
+    const { chainLength } = useLoginStore();
     let savedData = relayReceivedData.get(preAppTempAccount);
 
     // 一开始就没有数据 or overwrite previous data
     if (savedData === undefined || (savedData.appToRelayData && savedData.preToNextRelayData)) {
         savedData = {};
-        console.log('no data', preAppTempAccount);
     }
 
     // 判断是谁调用
@@ -111,6 +114,14 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
             // send back to applicant, using ano
             if (res) {
                 sendNextRelay2AppData(preAppTempAccount);
+                // if this relay is the last user relay, it will directly send data to validator
+                // Assuming the verifier is honest, so using socket
+                if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength - 1) {
+                    console.log('last relay: send data to validator');
+
+                    let data = getRelayFinalData(savedData);
+                    relaySendFinalData(data);
+                }
             } else {
                 console.log('verify result: false');
             }
@@ -126,6 +137,11 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
             // send back to applicant, using ano
             if (res) {
                 sendNextRelay2AppData(preAppTempAccount);
+                if (savedData.appToRelayData?.lastUserRelay === true) {
+                    console.log('last relay: send data to validator');
+                    let data = getRelayFinalData(savedData);
+                    relaySendFinalData(data);
+                }
             } else {
                 console.log('verify result: false');
             }
@@ -141,6 +157,11 @@ function verifyData(data: CombinedData) {
     if (!b || !n) return false;
     let rnd = (b + n) % 100;
 
+    // 验证l
+    if (data.appToRelayData.l != data.preToNextRelayData.l + 1) {
+        console.log('data to next relay, l is not expected');
+        return false;
+    }
     // 验证hash, 只有正向hash可以验证
     let hf = data.appToRelayData.hf,
         preHf = data.preToNextRelayData.hf,
@@ -148,7 +169,7 @@ function verifyData(data: CombinedData) {
         appTempAccount = data.appToRelayData.appTempAccount;
     if (!hf || !preHf || !r || !appTempAccount) return false;
     let res1 = verifyHashForward(appTempAccount, r, hf, preHf);
-    console.log('data to next relay verification result: ', res1);
+    console.log('data to next relay, hash verification result: ', res1);
 
     // 数据不够, 只能验证正向hash
     let hb = data.preToNextRelayData.hb,
@@ -162,11 +183,12 @@ function verifyData(data: CombinedData) {
     return false;
 }
 
-// save data for next relay in advance. not used...................
+// save data for next relay in advance. not used.
 function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRelayData | PreToNextRelayData) {
     let data2NextRelay = relaySend2NextData.get(appTempAccount);
     if (data2NextRelay === undefined) {
         // current relay -> next:
+        // @ts-ignore
         data2NextRelay = {
             from: null, //current relay
             to: null,
@@ -178,15 +200,16 @@ function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRel
             n: null,
             t: null
         };
+        // @ts-ignore
         relaySend2NextData.set(appTempAccount, data2NextRelay);
     }
 
-    if (from === 'pre appliacnt' && 'c' in data) {
-        data2NextRelay.hf = data.hf;
-        data2NextRelay.hb = data.hb;
-        data2NextRelay.b = data.b;
-    } else if (from === 'pre relay' && 'n' in data) {
-        data2NextRelay.n = data.n;
-        data2NextRelay.t = data.t;
-    }
+    // if (from === 'pre appliacnt' && 'c' in data) {
+    //     data2NextRelay.hf = data.hf;
+    //     data2NextRelay.hb = data.hb;
+    //     data2NextRelay.b = data.b;
+    // } else if (from === 'pre relay' && 'n' in data) {
+    //     data2NextRelay.n = data.n;
+    //     data2NextRelay.t = data.t;
+    // }
 }

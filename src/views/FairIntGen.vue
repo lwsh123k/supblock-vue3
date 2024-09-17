@@ -35,7 +35,7 @@ import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
 import { getHash, getRandom } from '@/ethers/util';
 import { socketMap } from '@/socket';
-import { appSendInitData } from '@/socket/applicantSocketEvent';
+import { appSendInitData } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';

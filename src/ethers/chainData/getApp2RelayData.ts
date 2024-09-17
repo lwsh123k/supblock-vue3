@@ -17,6 +17,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         hb: null,
         b: null,
         c: null,
+        l: relayNumber,
         chainIndex: chainIndex
     };
     if (relayNumber === 0) {

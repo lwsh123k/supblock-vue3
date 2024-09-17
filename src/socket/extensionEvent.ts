@@ -50,13 +50,15 @@ export function bindExtension(socket: Socket) {
                         break;
                     }
                 }
+                if (chainId != -1) break;
             }
             if (chainId === -1)
                 throw new Error(`not found hash in chains, received hash of applicant: ${hashOfApplicant}`);
             let specificRelayIndex = relayIndex.value[chainId];
+            let nextRelayIndex = specificRelayIndex + 1;
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
-            let data = getApp2RelayData(chainId, specificRelayIndex + 1); // 获得下一轮需要的数据
+            let data = getApp2RelayData(chainId, nextRelayIndex); // 获得下一轮需要的数据
             let accountAddress = await getAccountInfo(blindedFairIntNum);
             data.to = accountAddress.address;
             let encryptedData = await getEncryptData(accountAddress.publicKey, data);
@@ -66,9 +68,16 @@ export function bindExtension(socket: Socket) {
             let readOnlyStoreData = await getStoreData();
             let { key: privateKey, address: addressA } = tempAccountInfo[chainId].selectedAccount[specificRelayIndex]; // 当前轮的temp account
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
-            await writeStoreData.setApp2Relay(relayAddress, encryptedData);
 
-            // 选完随机数, 给下一个relay发送信息, relay index++, 表示当前轮结束
+            // determine if next relay is last user relay
+            let lastUserRelay = false;
+            if (nextRelayIndex === chainLength - 1) {
+                lastUserRelay = true;
+                console.log('last user relay');
+            }
+            await writeStoreData.setApp2Relay(relayAddress, encryptedData, lastUserRelay);
+
+            // 进行完随机数选择, 和给下一个relay发送信息, relay index++, 表示当前轮结束
             relayIndex.value[chainId]++;
         } catch (error) {
             console.log(error);

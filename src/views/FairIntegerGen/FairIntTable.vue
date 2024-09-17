@@ -2,7 +2,7 @@
     <div class="my-10">
         <!-- 进度条 -->
         <el-steps :active="activeStep" finish-status="success">
-            <el-step v-for="number in totalStep - 3" :key="number" @click.native="toStep(number - 1)"></el-step>
+            <el-step v-for="number in totalStep" :key="number" @click.native="toStep(number - 1)"></el-step>
         </el-steps>
 
         <!-- 表格展示 -->
@@ -30,28 +30,39 @@
                         {{ processLongString(scope.row.hash) }}
                     </template>
                 </el-table-column>
-                <el-table-column prop="status" label="status"></el-table-column>
-                <template v-slot:empty>
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: gray">no need fair integer generation</td>
-                    </tr>
-                </template>
+                <el-table-column prop="status" label="status">
+                    <template #default="scope">
+                        {{ activeStep === chainLength - 1 ? 'no need fair integer generation' : scope.row.status }}
+                    </template>
+                </el-table-column>
             </el-table>
         </div>
 
         <!-- 控制按钮 -->
         <div class="mt-10 flex items-center">
-            <el-button @click="prev" :disabled="activeStep === 0" size="large">上一步</el-button>
-            <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large">下一步</el-button>
+            <el-button @click="prev" :disabled="activeStep === 0" size="large" color="#58704d">previous</el-button>
+            <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large" color="#58704d"
+                >next</el-button
+            >
             <!-- relays数组第一个relay为validator, 所以与b数组索引错开 -->
             <span v-if="relays[activeStep + 1].relayNumber != -2" class="ml-14 text-2xl">{{ nextRelayMessage }}</span>
 
             <div class="ml-auto">
-                <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5">chain init</el-button>
-                <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
-                    >生成随机数并上传hash</el-button
-                >
-                <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
+                <div v-if="activeStep < chainLength - 1">
+                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5" color="#626aef"
+                        >chain init</el-button
+                    >
+
+                    <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
+                        >生成随机数并上传hash</el-button
+                    >
+                    <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
+                </div>
+                <div v-else-if="activeStep == chainLength - 1">
+                    <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large"
+                        >send to validator</el-button
+                    >
+                </div>
             </div>
         </div>
     </div>
@@ -63,7 +74,7 @@ import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
 import { getHash, getRandom } from '@/ethers/util';
 import { socketMap } from '@/socket';
-import { appSendInitData, send2Extension } from '@/socket/applicantSocketEvent';
+import { appSendInitData, send2Extension } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
@@ -71,6 +82,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, RelayAccount } from './types';
+import { appSendFinalData } from '@/socket/applicantEvent';
 
 // receive data from parent component
 const props = defineProps<{
@@ -100,7 +112,7 @@ let applicantStore = useApplicantStore();
 const { resetCurrentStep } = applicantStore;
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount } = loginStore;
-const totalStep = chainLength + 3;
+const totalStep = chainLength;
 
 // 页数跳转, 显示数据
 const activeStep = ref(0);

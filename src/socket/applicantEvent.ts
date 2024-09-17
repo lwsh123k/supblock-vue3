@@ -23,6 +23,12 @@ export function appRecevieValidatorData(socket: Socket) {
         let { chainIndex, tokenHash } = data;
         console.log(`chain initialization complete, token hash: ${tokenHash}, chain number: ${chainIndex}`);
     });
+
+    socket.on('validator send token t', (data: { verify: Boolean; token: string; chainId: number }) => {
+        // console.log(data);
+        let { chainId, token } = data;
+        console.log(`chain transmission completed, token hash: ${token}, chain number: ${chainId}`);
+    });
 }
 
 // app listening: next relay's anonymous account
@@ -50,4 +56,19 @@ export async function send2Extension(tempAccount: string, relayAccount: string, 
     let data = { tempAccount, relayAccount, hash, blindingNumber: b };
 
     socket0.emit('blinding number', data);
+}
+
+// applicant sends final data to validator
+export async function appSendFinalData(chainIndex: number) {
+    // obtain the account corresponding to the validator
+    let { tempAccountInfo, chainLength } = useLoginStore();
+    let appTempAddress = tempAccountInfo[chainIndex].selectedAccount[chainLength - 1].address;
+    console.log(`using ${appTempAddress} to send final data to validator`);
+
+    // applicant to validator, using temp chain length-1 account
+    let socket0 = socketMap.get(appTempAddress);
+    if (!socket0) throw new Error('socket not found when sending final data');
+    // get data, returned data including chain num
+    let data = getApp2RelayData(chainIndex, chainLength);
+    socket0.emit('applicant to validator: final data', data);
 }

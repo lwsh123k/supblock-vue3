@@ -1,4 +1,5 @@
-import { relayReceivedData, relaySend2NextData } from './chainDataType';
+import { useLoginStore } from '@/stores/modules/login';
+import { relayReceivedData, relaySend2NextData, type CombinedData } from './chainDataType';
 
 // receive data: pre applicant temp account and pre relay anonymous account -> current relay
 // send data: current relay -> next relay, this data from previous received data.
@@ -24,7 +25,25 @@ export function getPre2NextData(
         hb: expectedData?.appToRelayData?.hb,
         b: expectedData?.appToRelayData?.b,
         n: expectedData?.preToNextRelayData?.n,
-        t: expectedData?.preToNextRelayData?.t
+        t: expectedData?.preToNextRelayData?.t,
+        l: expectedData?.appToRelayData?.l!
+    };
+    return processedData;
+}
+
+export function getRelayFinalData(data: CombinedData) {
+    let { allAccountInfo, validatorAccount } = useLoginStore();
+    let processedData = {
+        from: allAccountInfo.anonymousAccount.address,
+        to: validatorAccount,
+        preAppTempAccount: data.appToRelayData?.from!,
+        preRelayAccount: data.preToNextRelayData?.from!,
+        hf: data.appToRelayData?.hf!,
+        hb: data.appToRelayData?.hb!,
+        b: data.appToRelayData?.b!,
+        n: data.preToNextRelayData?.n!,
+        t: data.preToNextRelayData?.t!,
+        l: data.appToRelayData?.l!
     };
     return processedData;
 }

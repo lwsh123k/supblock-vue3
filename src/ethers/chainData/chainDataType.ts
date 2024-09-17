@@ -8,7 +8,9 @@ export type AppToRelayData = {
     hb: null | string;
     b: null | number;
     c: null | number;
+    l: number; // 比PreToNextRelayData中l大一
     chainIndex: number;
+    lastUserRelay?: boolean;
 };
 
 // current relay -> next relay
@@ -22,6 +24,7 @@ export type PreToNextRelayData = {
     b: null | number;
     n: null | number;
     t: null | string; // ??????????
+    l: number;
 };
 
 export type RelayResDate = {

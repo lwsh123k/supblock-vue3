@@ -41,27 +41,24 @@
         <!-- 控制按钮 -->
         <div class="mt-10 flex items-center">
             <el-button @click="prev" :disabled="activeStep === 0" size="large" color="#58704d">previous</el-button>
-            <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large" color="#58704d"
-                >next</el-button
-            >
+            <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large"
+                color="#58704d">next</el-button>
             <!-- relays数组第一个relay为validator, 所以与b数组索引错开 -->
             <span v-if="relays[activeStep + 1].relayNumber != -2" class="ml-14 text-2xl">{{ nextRelayMessage }}</span>
 
             <div class="ml-auto">
                 <div v-if="activeStep < chainLength - 1">
-                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5" color="#626aef"
-                        >chain init</el-button
-                    >
+                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5"
+                        color="#626aef">chain
+                        init</el-button>
 
-                    <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
-                        >生成随机数并上传hash</el-button
-                    >
+                    <el-button type="primary" @click="uploadHashAndListen" class="mr-5"
+                        size="large">生成随机数并上传hash</el-button>
                     <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
                 </div>
                 <div v-else-if="activeStep == chainLength - 1">
-                    <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large"
-                        >send to validator</el-button
-                    >
+                    <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large">send to
+                        validator</el-button>
                 </div>
             </div>
         </div>
@@ -392,6 +389,7 @@ const nextRelayMessage = computed(() => {
     width: 99%;
     text-align: center;
 }
+
 /* 移除 Element Plus 表格的所有边框线 */
 :deep(.el-table th, .el-table td) {
     /* border: none !important; */
@@ -401,6 +399,7 @@ const nextRelayMessage = computed(() => {
     font-weight: normal;
     color: black;
 }
+
 :deep(.el-table td) {
     border: none !important;
     padding: 23px 0px;

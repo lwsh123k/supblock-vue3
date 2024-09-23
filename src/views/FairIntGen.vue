@@ -4,25 +4,26 @@
     <div class="demo-collapse">
         <el-collapse v-model="activeNames">
             <!-- chains -->
-            <el-collapse-item
-                v-for="(item, index) in datas"
-                :key="index"
-                :title="'Chain ' + (index + 1)"
-                :name="index + 1"
-                class="custom-collapse-item">
+            <el-collapse-item v-for="(item, index) in datas" :key="index" :title="'Chain ' + (index + 1)"
+                :name="index + 1" class="custom-collapse-item">
                 <div class="status-container">
-                    <FairIntTable
-                        :datas="item"
-                        :relays="relays[index]"
-                        :oneChainSendInfo="sendInfo[index]"
-                        :oneChainTempAccount="tempAccountInfo[index]"
-                        :chainId="index" />
+                    <FairIntTable :datas="item" :relays="relays[index]" :oneChainSendInfo="sendInfo[index]"
+                        :oneChainTempAccount="tempAccountInfo[index]" :chainId="index" />
                 </div>
             </el-collapse-item>
 
             <!-- verify signature -->
             <el-collapse-item title="Verify Signature" name="4">
-                <div>verify sig</div>
+                <!-- <div>verify sig</div> -->
+                <!-- 单纯验证签名 -->
+                <div id="verifySig">
+                    <el-input v-model="c" class="input-spacing" placeholder="c值" />
+                    <el-input v-model="s" class="input-spacing" placeholder="s值" />
+                    <el-input v-model="t" class="input-spacing" placeholder="t值" />
+                    <el-button type='primary' round plain @click="verifySignature">验证签名</el-button>
+                    <p v-if="isVeri">验证结果: {{ verificationResult }}</p>
+                </div>
+
             </el-collapse-item>
         </el-collapse>
     </div>
@@ -71,6 +72,7 @@ const activeNames = ref(['1']);
 .status-container {
     position: relative;
 }
+
 /* .table-buttons {
     position: absolute;
     right: 0px;
@@ -85,12 +87,14 @@ const activeNames = ref(['1']);
     overflow: auto;
 }
 
-.status-container > * {
-    transform: scale(0.98); /* 缩小到80% */
-    transform-origin: center center; /* 设置缩放原点 */
+.status-container>* {
+    transform: scale(0.98);
+    /* 缩小到80% */
+    transform-origin: center center;
+    /* 设置缩放原点 */
 }
 
-.status-container > * {
+.status-container>* {
     width: 100%;
     height: 100%;
 }
@@ -119,7 +123,15 @@ const activeNames = ref(['1']);
 :deep(.el-collapse-item__header) {
     padding: 20px;
     font-weight: bold;
-    font-size: 20px; /* 设置字号 */
-    height: 80px; /* 设置标题高度 */
+    font-size: 20px;
+    /* 设置字号 */
+    height: 80px;
+    /* 设置标题高度 */
+}
+
+/*让三个输入框之间有间距*/
+.input-spacing {
+    width: 240px;
+    margin-right: 10px;
 }
 </style>

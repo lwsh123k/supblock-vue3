@@ -34,22 +34,24 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.b = oneChainSendInfo.b[relayNumber];
-        data.c = 100;
+        data.c = oneChainSendInfo.c[relayNumber];
     } else if (relayNumber === chainLength) {
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
         data.r = oneChainSendInfo.r[relayNumber];
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
-        data.c = 100;
+        data.c = oneChainSendInfo.c[relayNumber];
     } else if (relayNumber === chainLength + 1) {
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
+        data.to = validatorAccount;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
         data.r = oneChainSendInfo.r[relayNumber];
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
     } else if (relayNumber === chainLength + 2) {
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
+        data.to = validatorAccount;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
         data.r = oneChainSendInfo.r[relayNumber];
     }

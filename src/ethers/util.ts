@@ -49,17 +49,20 @@ export function getRandom(tA: number, tB: number) {
 // 加密: 传入对象, 将对象 -> json字符串 -> 加密对象 -> 字符串
 // 返回的16进制加上0x前缀(grpc: binding number, r)
 export async function getEncryptData(publicKey: string, data: any) {
+    // publicKey: 不带0x
+    const removedPrefixpublicKey = publicKey.startsWith('0x') ? publicKey.slice(2) : publicKey;
     let jsonData = JSON.stringify(data);
-    let encryptedData = await EthCrypto.encryptWithPublicKey(publicKey, jsonData);
+    let encryptedData = await EthCrypto.encryptWithPublicKey(removedPrefixpublicKey, jsonData);
     return '0x' + cipher.stringify(encryptedData);
 }
 
 // 使用私钥解密
 // 解密: 字符串 -> 解密对象 -> json对象 -> 对象
 export async function getDecryptData(privateKey: string, encryptedData: string) {
-    // 去掉0x前缀
-    let removedPrefix = encryptedData.slice(2);
-    let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefix));
+    // privatekay: 带0x前缀, encryptedData: 不带0x前缀
+    privateKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
+    const removedPrefixData = encryptedData.startsWith('0x') ? encryptedData.slice(2) : encryptedData; // 去掉0x前缀
+    let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefixData));
     let data = JSON.parse(jsonData);
     return data;
 }
@@ -82,4 +85,38 @@ export function verifyHashForward(applicantTempAccount: string, r: string, curre
 export function verifyHashBackward(applicantTempAccount: string, r: string, currentHash: string, nextHash: string) {
     if (nextHash === undefined) return currentHash === keccak256(applicantTempAccount, r);
     else return currentHash === keccak256(applicantTempAccount, r, nextHash);
+}
+
+export function addHexAndMod(hex1: string, hex2: string) {
+    // format
+    hex1 = hex1.startsWith('0x') ? hex1 : '0x' + hex1;
+    hex2 = hex2.startsWith('0x') ? hex2 : '0x' + hex2;
+
+    // to bigint
+    const num1 = BigInt(hex1);
+    const num2 = BigInt(hex2);
+
+    // mod 2^256
+    const mod = BigInt(2) ** BigInt(256);
+    const result = (num1 + num2) % mod;
+
+    // 将结果转换回64位16进制字符串
+    return result.toString(16).padStart(64, '0');
+}
+
+export function subHexAndMod(hex1: string, hex2: string) {
+    // format
+    hex1 = hex1.startsWith('0x') ? hex1 : '0x' + hex1;
+    hex2 = hex2.startsWith('0x') ? hex2 : '0x' + hex2;
+
+    // to bigint
+    const num1 = BigInt(hex1);
+    const num2 = BigInt(hex2);
+
+    // mod 2^256
+    const mod = BigInt(2) ** BigInt(256);
+    const result = (num1 - num2) % mod;
+
+    // 将结果转换回64位16进制字符串
+    return result.toString(16).padStart(64, '0');
 }

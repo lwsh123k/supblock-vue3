@@ -203,7 +203,8 @@ async function uploadHashAndListen() {
     hashPromise
         .then((resHash) => {
             datas[step][1].hash = resHash.infoHashB;
-            datas[step][1].status = 'hash已上传';
+            // 如果先监听到随机数上传就取消设置该字段
+            if (datas[step][1].status !== '随机数已上传') datas[step][1].status = 'hash已上传';
             // ??
         })
         .catch((error) => {

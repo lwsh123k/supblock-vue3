@@ -43,10 +43,17 @@
                     inactive-text="使用真实数据"
                     active-color="#ff4949"
                     inactive-color="#13ce66" />
-                <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
+                <el-button
+                    type="primary"
+                    @click="uploadHashAndListen"
+                    class="mr-5"
+                    size="large"
+                    id="relayUploadHashButton"
                     >生成随机数并上传hash</el-button
                 >
-                <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
+                <el-button type="success" @click="uploadRandomNum" size="large" id="relayUploadNumButton"
+                    >上传随机数</el-button
+                >
             </div>
         </div>
     </div>
@@ -60,7 +67,13 @@ import { getRandom } from '@/ethers/util';
 import { useRelayStore } from '@/stores/modules/relay';
 import { useLoginStore } from '@/stores/modules/login';
 import { Wallet } from 'ethers';
-import { computed, onBeforeMount, reactive, ref, toRef, toRefs, watchEffect } from 'vue';
+import { computed, onBeforeMount, reactive, ref, toRef, toRefs, watch, watchEffect } from 'vue';
+
+// handle auto upload
+import { useEventStore } from '@/stores/modules/autoUploadEvent';
+import { storeToRefs } from 'pinia';
+const eventStore = useEventStore();
+const { triggerUploadHash, triggerReuploadNum } = storeToRefs(eventStore);
 
 const popoverVisible = ref(true);
 const loginStore = useLoginStore();
@@ -69,23 +82,22 @@ const relayStore = useRelayStore();
 const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
 const dataFromApplicant = relayStore.dataFromApplicant;
 const useFakeData = toRef(relayStore, 'useFakeData');
-
+const activeStep = toRef(relayStore, 'activeStep');
 const totalStep = chainLength + 3;
 
 // 使用计算属性合并
 const combinedData = computed(() => {
-    // 确保在 a 和 b 的长度之间取较小的一个，以防数组长度不等
-    let minLength = Math.min(dataFromApplicant.length, dataToApplicant.length);
+    // console.log('computed'); // watch先于computed执行
+    // 确保在 a 和 b 的长度之间取较小的一个，以防数组长度不等(actually, they hava the same lehgth)
+    let minLength = Math.max(dataFromApplicant.length, dataToApplicant.length);
     let combined = [];
     for (let i = 0; i < minLength; i++) {
         combined.push([dataFromApplicant[i], dataToApplicant[i]]);
     }
-    activeStep.value = minLength - 1;
     return combined;
 });
 
-// 切换当前正在和哪个applicant进行通话
-const activeStep = ref(0);
+// 切换当前正在和哪个applicant交换数据
 function toggleApplicant() {
     // do something
 }
@@ -137,36 +149,68 @@ async function uploadHashAndListen() {
     dataToApplicant[step].status = 'hash已上传';
 
     // 定时监听随机数
-    try {
-        let result = await listenReqNum(addressA, addressB);
-        console.log('监听到了随机数', result);
-        dataFromApplicant[step].randomNumBefore = result.ni;
-        dataFromApplicant[step].randomText = result.ni;
-        console.log('app uploaded random num to relay: ', dataFromApplicant[step].randomNumBefore);
-        dataFromApplicant[step].r = result.ri;
-        dataFromApplicant[step].tA = result.t;
-        dataFromApplicant[step].status = '随机数已上传';
-    } catch (error) {
-        console.log('没有监听到', error);
-        // 超时 && 自己已上传 && 上传的是对的
-        if (
-            dataToApplicant[step].isUpload &&
-            dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter
-        ) {
-            // 重传
-            dataFromApplicant[step].status = '未在30s内上传随机数';
-            let { ni: niReuploaded, ri, hash } = getRandom(tA, tB);
-            let index = dataFromApplicant[step].index;
-            console.log(`random num reupload, appliacnt address: ${addressA}, onchain array index: ${index}`);
-            await writeFair.reuploadNum(addressA, index, 1, niReuploaded, ri);
-            // 改变状态
-            dataToApplicant[step].randomText = ni.toString() + '/' + niReuploaded;
-            // dataToApplicant[step].r += '/' + ri;
-            dataToApplicant[step].status = '随机数已重新上传';
-            dataToApplicant[step].isReupload = true;
-            // 给下一个relay发消息
-        }
-    }
+    listenReqNum(addressA, addressB)
+        .then((result) => {
+            console.log('监听到了随机数', result);
+            dataFromApplicant[step].randomNumBefore = result.ni;
+            dataFromApplicant[step].randomText = result.ni;
+            console.log('app uploaded random num to relay: ', dataFromApplicant[step].randomNumBefore);
+            dataFromApplicant[step].r = result.ri;
+            dataFromApplicant[step].tA = result.t;
+            dataFromApplicant[step].status = '随机数已上传';
+        })
+        .catch(async (error) => {
+            console.log('没有监听到', error);
+            // 超时 && 自己已上传 && 上传的是对的
+            if (
+                dataToApplicant[step].isUpload &&
+                dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter
+            ) {
+                // 重传
+                dataFromApplicant[step].status = '未在30s内上传随机数';
+                let { ni: niReuploaded, ri, hash } = getRandom(tA, tB);
+                let index = dataFromApplicant[step].index;
+                console.log(`random num reupload, appliacnt address: ${addressA}, onchain array index: ${index}`);
+                await writeFair.reuploadNum(addressA, index, 1, niReuploaded, ri);
+                // 改变状态
+                dataToApplicant[step].randomText = ni.toString() + '/' + niReuploaded;
+                // dataToApplicant[step].r += '/' + ri;
+                dataToApplicant[step].status = '随机数已重新上传';
+                dataToApplicant[step].isReupload = true;
+                // 给下一个relay发消息
+            }
+        });
+
+    // try {
+    //     let result = await listenReqNum(addressA, addressB);
+    //     console.log('监听到了随机数', result);
+    //     dataFromApplicant[step].randomNumBefore = result.ni;
+    //     dataFromApplicant[step].randomText = result.ni;
+    //     console.log('app uploaded random num to relay: ', dataFromApplicant[step].randomNumBefore);
+    //     dataFromApplicant[step].r = result.ri;
+    //     dataFromApplicant[step].tA = result.t;
+    //     dataFromApplicant[step].status = '随机数已上传';
+    // } catch (error) {
+    //     console.log('没有监听到', error);
+    //     // 超时 && 自己已上传 && 上传的是对的
+    //     if (
+    //         dataToApplicant[step].isUpload &&
+    //         dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter
+    //     ) {
+    //         // 重传
+    //         dataFromApplicant[step].status = '未在30s内上传随机数';
+    //         let { ni: niReuploaded, ri, hash } = getRandom(tA, tB);
+    //         let index = dataFromApplicant[step].index;
+    //         console.log(`random num reupload, appliacnt address: ${addressA}, onchain array index: ${index}`);
+    //         await writeFair.reuploadNum(addressA, index, 1, niReuploaded, ri);
+    //         // 改变状态
+    //         dataToApplicant[step].randomText = ni.toString() + '/' + niReuploaded;
+    //         // dataToApplicant[step].r += '/' + ri;
+    //         dataToApplicant[step].status = '随机数已重新上传';
+    //         dataToApplicant[step].isReupload = true;
+    //         // 给下一个relay发消息
+    //     }
+    // }
 }
 
 // 随机数上传
@@ -210,7 +254,6 @@ watchEffect(async () => {
             dataToApplicant[i].isReupload === false &&
             dataToApplicant[i].hasChecked === false
         ) {
-            console.log(11111111111111);
             try {
                 // 创建合约实例
                 let { key: privateKey, address: myAddress } = allAccountInfo.anonymousAccount;
@@ -240,6 +283,17 @@ watchEffect(async () => {
         }
     }
 });
+
+// watch auto upload
+watch(
+    () => dataFromApplicant.length,
+    async (length) => {
+        // console.log('watch'); // watch先于computed执行
+        activeStep.value = length - 1; // update to show latest data
+        await uploadHashAndListen();
+        await uploadRandomNum();
+    }
+);
 </script>
 
 <style scoped>

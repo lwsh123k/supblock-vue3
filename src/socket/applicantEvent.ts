@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia';
 import { socketMap } from '.';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResDate } from '@/ethers/chainData/chainDataType';
+import { getHash, keccak256, subHexAndMod } from '@/ethers/util';
 
 // applicant -> validator: chain initialization data
 export function appSendInitData(chainIndex: number, appTemp0Address: string) {
@@ -28,6 +29,14 @@ export function appRecevieValidatorData(socket: Socket) {
         // console.log(data);
         let { chainId, token } = data;
         console.log(`chain transmission completed, token hash: ${token}, chain number: ${chainId}`);
+
+        // sub all c
+        let { sendInfo, chainLength } = useLoginStore();
+        let specificSendInfo = sendInfo[chainId];
+        for (let i = 1; i <= chainLength; i++) {
+            token = subHexAndMod(token, specificSendInfo.c[i]);
+        }
+        console.log(`token sub all c: ${token}, hash: ${keccak256(token)}`);
     });
 }
 

@@ -12,7 +12,9 @@ import {
     type PreToNextRelayData
 } from '../chainData/chainDataType';
 import { relaySendFinalData } from '@/socket/relayEvent';
-import { getPre2NextData, getRelayFinalData } from '../chainData/getPre2NextData';
+import { getRelayFinalData } from '../chainData/getPre2NextData';
+import { triggerEvents } from './autoUpload';
+import { toRef } from 'vue';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen() {
@@ -25,6 +27,7 @@ export async function backendListen() {
     // relay listening: hash upload, using anonymous account
     let { address: anonymousAddress } = allAccountInfo.anonymousAccount;
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
+    const activeStep = toRef(relayStore, 'activeStep');
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
@@ -53,6 +56,13 @@ export async function backendListen() {
             isReupload: false,
             isUpload: false
         });
+
+        // 展示最新数据
+        // activeStep.value = Math.min(dataFromApplicant.length, dataToApplicant.length) - 1;
+
+        // 自动上传
+        // triggerEvents();
+        // finally do this by watching dataFromApplicant.length
     });
 
     // next relay listening: app -> next, using real name account
@@ -75,7 +85,7 @@ export async function backendListen() {
         // verify data and send back
         // next relay通过socket使用匿名账户回复applicant
         let preAppTempAccount = from; // 对应关系
-        checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
+        await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
     });
 
     // next relay listening: current relay -> next relay, using real name account
@@ -89,11 +99,11 @@ export async function backendListen() {
 
         // verify and send back
         if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
-        checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
+        await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
     });
 }
 
-function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) {
+async function checkPreDataAndRes(preAppTempAccount: string, from: string, data: AppToRelayData | PreToNextRelayData) {
     const { chainLength } = useLoginStore();
     let savedData = relayReceivedData.get(preAppTempAccount);
 
@@ -104,10 +114,10 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
 
     // 判断是谁调用
     if (from === 'pre appliacnt temp account') {
-        savedData.appToRelayData = data;
+        savedData.appToRelayData = data as AppToRelayData;
         relayReceivedData.set(preAppTempAccount, savedData);
         console.log(relayReceivedData.get(preAppTempAccount));
-        // 查看对方有没有上传数据
+        // 检查对方是否上传数据, 如果上传, 就检查数据是否正确
         if ('preToNextRelayData' in savedData) {
             // verify, fair intager, hashforward, hashbackward
             let res = verifyData(savedData);
@@ -118,8 +128,7 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
                 // Assuming the verifier is honest, so using socket
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength - 1) {
                     console.log('last relay: send data to validator');
-
-                    let data = getRelayFinalData(savedData);
+                    let data = await getRelayFinalData(savedData);
                     relaySendFinalData(data);
                 }
             } else {
@@ -127,10 +136,11 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
             }
         }
     } else if (from === 'pre relay account') {
-        savedData.preToNextRelayData = data;
+        savedData.preToNextRelayData = data as PreToNextRelayData;
         relayReceivedData.set(preAppTempAccount, savedData);
         console.log(relayReceivedData.get(preAppTempAccount));
-        // 查看对方有没有上传数据
+
+        // check if the other side has uploaded data, if so, verify data
         if ('appToRelayData' in savedData) {
             // verify
             let res = verifyData(savedData);
@@ -139,7 +149,7 @@ function checkPreDataAndRes(preAppTempAccount: string, from: string, data: any) 
                 sendNextRelay2AppData(preAppTempAccount);
                 if (savedData.appToRelayData?.lastUserRelay === true) {
                     console.log('last relay: send data to validator');
-                    let data = getRelayFinalData(savedData);
+                    let data = await getRelayFinalData(savedData);
                     relaySendFinalData(data);
                 }
             } else {

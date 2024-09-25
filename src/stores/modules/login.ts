@@ -30,6 +30,7 @@ interface SendInfo {
     b: number[];
     hashForward: string[];
     hashBackward: string[];
+    c: string[];
 }
 interface RandomInfo {
     myRandom: number[];
@@ -58,10 +59,12 @@ export const useLoginStore = defineStore('login', () => {
         Array(chainNumber)
             .fill(null)
             .map(() => {
-                return { r: [], b: [], hashForward: [], hashBackward: [] };
+                return { r: [], b: [], hashForward: [], hashBackward: [], c: [] };
             })
     );
     const validatorAccount = '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'; // validator account
+    const validatorPubkey =
+        '374462096f4ccdc90b97c0201d0ad8ff67da224026dc20e61c107f577db537d049648511e4e922ce74a0ff7494eeac72317e60a48cb2a71af21e4e2258fcca36';
 
     // 登录：随机选择账户, 发送socket登录, 发送blinding number到服务器端
     async function processAccount(privateKey: string[]) {
@@ -91,8 +94,11 @@ export const useLoginStore = defineStore('login', () => {
                     } while (sendInfo[i].b.includes(randomB));
                     sendInfo[i].b.push(randomB);
 
-                    // r: hash时混淆
+                    // r: hash时混淆(start with 0x)
                     sendInfo[i].r.push(generateRandomByte(32));
+
+                    // c: token to next = Encrypt((current token + c) % 2^256, pubkey of next relay)
+                    sendInfo[i].c.push(generateRandomByte(32));
                 }
                 // selectedTempAccount中第一个账户为real name account
                 tempAccountInfo[i].selectedNum.pop();
@@ -172,5 +178,14 @@ export const useLoginStore = defineStore('login', () => {
     // 退出登录
     function $reset() {}
 
-    return { chainLength, chainNumber, allAccountInfo, tempAccountInfo, validatorAccount, sendInfo, processAccount };
+    return {
+        chainLength,
+        chainNumber,
+        allAccountInfo,
+        tempAccountInfo,
+        validatorAccount,
+        validatorPubkey,
+        sendInfo,
+        processAccount
+    };
 });

@@ -45,8 +45,11 @@ export const useRelayStore = defineStore('relayStore', () => {
     // 是否使用数据
     let useFakeData = ref(false);
 
+    // 切换当前正在和哪个applicant交换数据, 当前为默认最新的applicant
+    const activeStep = ref(0);
+
     // 重置
     function $reset() {}
 
-    return { dataFromApplicant, dataFromRelay, dataToApplicant, useFakeData };
+    return { dataFromApplicant, dataFromRelay, dataToApplicant, useFakeData, activeStep };
 });

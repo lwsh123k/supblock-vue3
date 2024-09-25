@@ -7,7 +7,7 @@ export type AppToRelayData = {
     hf: null | string;
     hb: null | string;
     b: null | number;
-    c: null | number;
+    c: null | string;
     l: number; // 比PreToNextRelayData中l大一
     chainIndex: number;
     lastUserRelay?: boolean;

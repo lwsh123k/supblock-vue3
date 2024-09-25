@@ -93,14 +93,13 @@ export function bindExtension(socket: Socket) {
 
             // current anonymous relay -> next real name relay: 获取对方的公钥, 需要发送的信息
             let { key: privateKey, address: preRelayAnonymousAccount } = allAccountInfo.anonymousAccount;
-            let accountAddress = await getAccountInfo(blindedFairIntNum);
-            let relayAddress = accountAddress.address;
-            let data = getPre2NextData(applicantAddress, preRelayAnonymousAccount, relayAddress);
+            let { address: relayAddress, publicKey: relayPubkey } = await getAccountInfo(blindedFairIntNum);
+            let data = await getPre2NextData(applicantAddress, preRelayAnonymousAccount, relayAddress, relayPubkey);
             // use fake data
             let relayStore = useRelayStore();
             let { useFakeData } = relayStore;
             if (useFakeData) data.n = -100;
-            let encryptedData = await getEncryptData(accountAddress.publicKey, data);
+            let encryptedData = await getEncryptData(relayPubkey, data);
 
             // 当前relay使用anonymous account
             let readOnlyStoreData = await getStoreData();

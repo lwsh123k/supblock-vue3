@@ -12,7 +12,7 @@ import {
     type PreToNextRelayData
 } from '../chainData/chainDataType';
 import { relaySendFinalData } from '@/socket/relayEvent';
-import { getRelayFinalData } from '../chainData/getPre2NextData';
+import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
 import { triggerEvents } from './autoUpload';
 import { toRef } from 'vue';
 
@@ -128,7 +128,7 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
                 // Assuming the verifier is honest, so using socket
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength - 1) {
                     console.log('last relay: send data to validator');
-                    let data = await getRelayFinalData(savedData);
+                    let data = await getRelay2ValidatorData(savedData);
                     relaySendFinalData(data);
                 }
             } else {
@@ -149,7 +149,7 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
                 sendNextRelay2AppData(preAppTempAccount);
                 if (savedData.appToRelayData?.lastUserRelay === true) {
                     console.log('last relay: send data to validator');
-                    let data = await getRelayFinalData(savedData);
+                    let data = await getRelay2ValidatorData(savedData);
                     relaySendFinalData(data);
                 }
             } else {

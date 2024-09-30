@@ -27,6 +27,13 @@ export const getAccountInfo = async (index: number) => {
     return info;
 };
 
+export const getPubkeyByAddress = async (address: string) => {
+    let info = await requests.post<any, AccountPubKey>(`/getPubkeyByAddress`, {
+        address: address
+    });
+    return info;
+};
+
 // 获得合约地址
 // 获得账户信息
 interface contractAddress {

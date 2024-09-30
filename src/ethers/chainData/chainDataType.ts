@@ -3,6 +3,7 @@ export type AppToRelayData = {
     from: null | string; // pre applicant temp account, 和PreToNextRelayData中preAppTempAccount对应
     to: null | string; // relay
     appTempAccount: null | string; // 下一轮app要用的temp account
+    appTempAccountPubkey: null | string;
     r: null | string;
     hf: null | string;
     hb: null | string;

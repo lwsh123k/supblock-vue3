@@ -16,23 +16,25 @@ export async function getPre2NextData(
     for (const [key, value] of relayReceivedData) {
         if (value.appToRelayData?.appTempAccount === currentApplicantTemp) expectedData = value;
     }
-    if (expectedData === null) throw new Error('pre to next data not found');
 
-    // process data
-    // decrypt t
-    const { allAccountInfo } = useLoginStore();
-    let { realNameAccount } = allAccountInfo;
+    // data not found
+    if (expectedData === null) throw new Error('current to next data not found');
     if (!expectedData?.preToNextRelayData?.t) {
         console.log('t is null or undefined: ', expectedData?.preToNextRelayData?.t);
         throw new Error('t not exist');
     }
+    if (!expectedData.appToRelayData?.appTempAccountPubkey) {
+        console.log('app temp account pubkey not exist');
+        throw new Error('app temp account pubkey not exist');
+    }
+    console.log(expectedData);
     console.log('t: ', expectedData?.preToNextRelayData?.t, typeof expectedData?.preToNextRelayData?.t);
-    let decryptedT = await getDecryptData(realNameAccount.key, expectedData?.preToNextRelayData?.t!);
 
-    // encrypt t with pubkey of next relay
+    // encrypt t with pubkey of current app temp account
     let c = expectedData?.appToRelayData?.c!;
-    let tokenAddc = addHexAndMod(decryptedT, c);
-    let encryptedToken = getEncryptData(nextRelayPubkey, tokenAddc);
+    let tokenAddc = addHexAndMod(expectedData?.preToNextRelayData?.t, c);
+    let currentApplicantTempPubkey = expectedData.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
+    let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
     let processedData = {
         from: currentRelayAnonymousAccount,
         to: nextRelayAccount,
@@ -48,21 +50,27 @@ export async function getPre2NextData(
     return processedData;
 }
 
-export async function getRelayFinalData(data: CombinedData): Promise<PreToNextRelayData> {
+export async function getRelay2ValidatorData(data: CombinedData): Promise<PreToNextRelayData> {
     let { allAccountInfo, validatorAccount, validatorPubkey } = useLoginStore();
 
-    // decrypt t
-    let { realNameAccount } = allAccountInfo;
-    if (data.preToNextRelayData?.t === undefined) {
+    if (!data.preToNextRelayData?.t) {
         console.log('t not exist');
         throw new Error('t not exist');
     }
-    let decryptedT = await getDecryptData(realNameAccount.key, data.preToNextRelayData?.t!);
 
-    // encrypt t with pubkey of validator
+    if (!data.appToRelayData?.appTempAccountPubkey) {
+        console.log('app temp account pubkey not exist');
+        throw new Error('app temp account pubkey not exist');
+    }
+    console.log(data);
+    console.log('t: ', data?.preToNextRelayData?.t, typeof data?.preToNextRelayData?.t);
+
+    // encrypt t with pubkey of current app temp account
     let c = data.appToRelayData?.c!;
-    let tokenAddc = addHexAndMod(decryptedT, c);
-    let encryptedToken = await getEncryptData(validatorPubkey, tokenAddc);
+    let token = data.preToNextRelayData.t;
+    let tokenAddc = addHexAndMod(token, c);
+    let currentApplicantTempPubkey = data.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
+    let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
 
     let processedData: PreToNextRelayData = {
         from: allAccountInfo.anonymousAccount.address,

@@ -62,6 +62,7 @@ export async function getDecryptData(privateKey: string, encryptedData: string) 
     // privatekay: 带0x前缀, encryptedData: 不带0x前缀
     privateKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
     const removedPrefixData = encryptedData.startsWith('0x') ? encryptedData.slice(2) : encryptedData; // 去掉0x前缀
+    console.log(privateKey, removedPrefixData, cipher.parse(removedPrefixData));
     let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefixData));
     let data = JSON.parse(jsonData);
     return data;

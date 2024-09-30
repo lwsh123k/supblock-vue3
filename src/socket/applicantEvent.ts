@@ -5,7 +5,7 @@ import { storeToRefs } from 'pinia';
 import { socketMap } from '.';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResDate } from '@/ethers/chainData/chainDataType';
-import { getHash, keccak256, subHexAndMod } from '@/ethers/util';
+import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
 
 // applicant -> validator: chain initialization data
 export function appSendInitData(chainIndex: number, appTemp0Address: string) {
@@ -25,17 +25,25 @@ export function appRecevieValidatorData(socket: Socket) {
         console.log(`chain initialization complete, token hash: ${tokenHash}, chain number: ${chainIndex}`);
     });
 
-    socket.on('validator send token t', (data: { verify: Boolean; token: string; chainId: number }) => {
-        // console.log(data);
+    socket.on('validator send token t', async (data: { verify: Boolean; token: string; chainId: number }) => {
+        console.log('verify data: ', data);
         let { chainId, token } = data;
-        console.log(`chain transmission completed, token hash: ${token}, chain number: ${chainId}`);
+        console.log(`chain transmission completed, token received: ${token}, chain number: ${chainId}`);
 
-        // sub all c
-        let { sendInfo, chainLength } = useLoginStore();
-        let specificSendInfo = sendInfo[chainId];
-        for (let i = 1; i <= chainLength; i++) {
+        let { sendInfo, chainLength, tempAccountInfo, chainNumber } = useLoginStore();
+        if (chainId < 0 || chainId >= chainNumber) {
+            console.log('chain id not in range');
+            return;
+        }
+        // decrypt and sub all c
+        let specificSendInfo = sendInfo[chainId],
+            oneChainTempAccountInfo = tempAccountInfo[chainId];
+        for (let i = chainLength; i >= 1; i--) {
+            console.log(token, i);
+            token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
             token = subHexAndMod(token, specificSendInfo.c[i]);
         }
+        token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[0].key, token);
         console.log(`token sub all c: ${token}, hash: ${keccak256(token)}`);
     });
 }

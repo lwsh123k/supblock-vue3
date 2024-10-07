@@ -4,7 +4,12 @@ import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
 
 // set next relay info
-export async function setNextRelayInfo(chainIndex: number, nextRelayIndex: number, ni: number) {
+export async function setNextRelayInfo(
+    chainIndex: number,
+    nextRelayIndex: number,
+    ni: number,
+    updatePlace: string = 'event listening'
+) {
     // 获取b
     const loginStore = useLoginStore();
     const { sendInfo, chainLength } = loginStore;
@@ -18,6 +23,16 @@ export async function setNextRelayInfo(chainIndex: number, nextRelayIndex: numbe
         console.log('not update the last two, default is validator');
         return;
     }
+
+    // check has updated
+    if (relay[nextRelayIndex].publicKey != '') {
+        console.log(
+            `next relay info has updated in ${updatePlace === 'event listening' ? 'extension' : 'event listening'}`
+        );
+        return;
+    }
+    console.log(`updating relay info in ${updatePlace}`);
+
     // (n + b) % 100
     let b = oneChainSendInfo.b[nextRelayIndex - 1];
     relay[nextRelayIndex].b = b;

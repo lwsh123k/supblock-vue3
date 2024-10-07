@@ -10,6 +10,7 @@ import { useLoginStore } from '@/stores/modules/login';
 import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { useRelayStore } from '@/stores/modules/relay';
 import { getPre2NextData } from '@/ethers/chainData/getPre2NextData';
+import { setNextRelayInfo } from '@/views/FairIntegerGen/updateNextRelay';
 
 // data type from extensions
 interface NumInfo {
@@ -39,7 +40,7 @@ export function bindExtension(socket: Socket) {
     // then, current anonymous applicant -> next real name relay: b, r, temp account
     socket.on('new tab opening finished to applicant', async (data1: NumInfo) => {
         try {
-            let { blindedFairIntNum, relay: preRelayAddress, hashOfApplicant } = data1;
+            let { blindedFairIntNum, relay: preRelayAddress, hashOfApplicant, fairIntegerNumber } = data1;
             console.log('extension -> applicant, next relay number: ', blindedFairIntNum);
             // need to know: which chain and which relay through unique hash
             let chainId = -1;
@@ -54,8 +55,11 @@ export function bindExtension(socket: Socket) {
             }
             if (chainId === -1)
                 throw new Error(`not found hash in chains, received hash of applicant: ${hashOfApplicant}`);
-            let specificRelayIndex = relayIndex.value[chainId];
+            let specificRelayIndex = relayIndex.value[chainId]; // 在当前轮中，relay是第几个正在和applicant交互的
             let nextRelayIndex = specificRelayIndex + 1;
+
+            // 更新存储的信息
+            await setNextRelayInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension');
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
             let data = getApp2RelayData(chainId, nextRelayIndex); // 获得下一轮需要的数据

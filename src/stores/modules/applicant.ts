@@ -86,6 +86,8 @@ export const useApplicantStore = defineStore('applicantStore', () => {
             .fill(null)
             .map(() => [])
     );
+
+    // relayNumber: validator = -1, not defined: -2
     for (let i = 0; i < chainNumber; i++) {
         // 第一个为 validator
         relays[i][0] = {

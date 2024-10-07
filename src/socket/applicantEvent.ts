@@ -39,11 +39,11 @@ export function appRecevieValidatorData(socket: Socket) {
         let specificSendInfo = sendInfo[chainId],
             oneChainTempAccountInfo = tempAccountInfo[chainId];
         for (let i = chainLength; i >= 1; i--) {
-            console.log(token, i);
-            token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
+            console.log(`token: ${token}, i: ${i}, typeof token: ${typeof token}`);
+            // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
             token = subHexAndMod(token, specificSendInfo.c[i]);
         }
-        token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[0].key, token);
+        // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[0].key, token);
         console.log(`token sub all c: ${token}, hash: ${keccak256(token)}`);
     });
 }
@@ -79,13 +79,13 @@ export async function send2Extension(tempAccount: string, relayAccount: string, 
 export async function appSendFinalData(chainIndex: number) {
     // obtain the account corresponding to the validator
     let { tempAccountInfo, chainLength } = useLoginStore();
-    let appTempAddress = tempAccountInfo[chainIndex].selectedAccount[chainLength - 1].address;
+    let appTempAddress = tempAccountInfo[chainIndex].selectedAccount[chainLength + 1].address;
     console.log(`using ${appTempAddress} to send final data to validator`);
 
     // applicant to validator, using temp chain length-1 account
     let socket0 = socketMap.get(appTempAddress);
     if (!socket0) throw new Error('socket not found when sending final data');
     // get data, returned data including chain num
-    let data = getApp2RelayData(chainIndex, chainLength);
+    let data = getApp2RelayData(chainIndex, chainLength + 1);
     socket0.emit('applicant to validator: final data', data);
 }

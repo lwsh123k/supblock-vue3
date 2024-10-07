@@ -62,7 +62,7 @@ export async function getDecryptData(privateKey: string, encryptedData: string) 
     // privatekay: 带0x前缀, encryptedData: 不带0x前缀
     privateKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
     const removedPrefixData = encryptedData.startsWith('0x') ? encryptedData.slice(2) : encryptedData; // 去掉0x前缀
-    console.log(privateKey, removedPrefixData, cipher.parse(removedPrefixData));
+    // console.log(privateKey, removedPrefixData, cipher.parse(removedPrefixData));
     let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefixData));
     let data = JSON.parse(jsonData);
     return data;
@@ -78,7 +78,17 @@ export function keccak256(...args: string[]) {
 }
 
 // 验证正向hash
-export function verifyHashForward(applicantTempAccount: string, r: string, currentHash: string, PreHash: string) {
+export function verifyHashForward(
+    applicantTempAccount: string,
+    r: string,
+    currentHash: string,
+    PreHash: string,
+    log: boolean = false
+) {
+    if (log)
+        console.log(
+            `received hash: ${currentHash}, calculated hash: ${PreHash === undefined ? keccak256(applicantTempAccount, r) : keccak256(applicantTempAccount, r, PreHash)}`
+        );
     if (PreHash === undefined) return currentHash === keccak256(applicantTempAccount, r);
     else return currentHash === keccak256(applicantTempAccount, r, PreHash);
 }
@@ -116,7 +126,7 @@ export function subHexAndMod(hex1: string, hex2: string) {
 
     // mod 2^256
     const mod = BigInt(2) ** BigInt(256);
-    const result = (num1 - num2) % mod;
+    const result = (num1 + mod - num2) % mod;
 
     // 将结果转换回64位16进制字符串
     return result.toString(16).padStart(64, '0');

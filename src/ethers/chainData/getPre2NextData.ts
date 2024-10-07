@@ -27,14 +27,16 @@ export async function getPre2NextData(
         console.log('app temp account pubkey not exist');
         throw new Error('app temp account pubkey not exist');
     }
-    console.log(expectedData);
-    console.log('t: ', expectedData?.preToNextRelayData?.t, typeof expectedData?.preToNextRelayData?.t);
+    console.log('expected data: ', expectedData);
 
     // encrypt t with pubkey of current app temp account
     let c = expectedData?.appToRelayData?.c!;
     let tokenAddc = addHexAndMod(expectedData?.preToNextRelayData?.t, c);
-    let currentApplicantTempPubkey = expectedData.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
-    let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
+    console.log(
+        `t: ${expectedData?.preToNextRelayData?.t}, c: ${expectedData.appToRelayData.c}, token + c: ${tokenAddc}`
+    );
+    // let currentApplicantTempPubkey = expectedData.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
+    // let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
     let processedData = {
         from: currentRelayAnonymousAccount,
         to: nextRelayAccount,
@@ -44,7 +46,7 @@ export async function getPre2NextData(
         hb: expectedData?.appToRelayData?.hb,
         b: expectedData?.appToRelayData?.b,
         n: expectedData?.preToNextRelayData?.n,
-        t: encryptedToken,
+        t: tokenAddc,
         l: expectedData?.appToRelayData?.l!
     };
     return processedData;
@@ -62,15 +64,15 @@ export async function getRelay2ValidatorData(data: CombinedData): Promise<PreToN
         console.log('app temp account pubkey not exist');
         throw new Error('app temp account pubkey not exist');
     }
-    console.log(data);
-    console.log('t: ', data?.preToNextRelayData?.t, typeof data?.preToNextRelayData?.t);
+    console.log('expected data: ', data);
 
     // encrypt t with pubkey of current app temp account
     let c = data.appToRelayData?.c!;
     let token = data.preToNextRelayData.t;
     let tokenAddc = addHexAndMod(token, c);
-    let currentApplicantTempPubkey = data.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
-    let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
+    console.log(`t: ${data?.preToNextRelayData?.t}, c: ${data.appToRelayData.c}, token + c: ${tokenAddc}`);
+    // let currentApplicantTempPubkey = data.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
+    // let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
 
     let processedData: PreToNextRelayData = {
         from: allAccountInfo.anonymousAccount.address,
@@ -81,7 +83,7 @@ export async function getRelay2ValidatorData(data: CombinedData): Promise<PreToN
         hb: data.appToRelayData?.hb!,
         b: data.appToRelayData?.b!,
         n: data.preToNextRelayData?.n!,
-        t: encryptedToken,
+        t: tokenAddc,
         l: data.appToRelayData?.l!
     };
     return processedData;

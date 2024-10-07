@@ -71,7 +71,7 @@ export function bindExtension(socket: Socket) {
 
             // determine if next relay is last user relay
             let lastUserRelay = false;
-            if (nextRelayIndex === chainLength - 1) {
+            if (nextRelayIndex === chainLength) {
                 lastUserRelay = true;
                 console.log('last user relay');
             }

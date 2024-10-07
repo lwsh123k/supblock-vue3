@@ -117,7 +117,7 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
         savedData.appToRelayData = data as AppToRelayData;
         relayReceivedData.set(preAppTempAccount, savedData);
         console.log(relayReceivedData.get(preAppTempAccount));
-        // 检查对方是否上传数据, 如果上传, 就检查数据是否正确
+        // 通过保存数据, 检查对方是否上传数据; 如果上传, 就检查数据是否正确
         if ('preToNextRelayData' in savedData) {
             // verify, fair intager, hashforward, hashbackward
             let res = verifyData(savedData);
@@ -126,7 +126,7 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
                 sendNextRelay2AppData(preAppTempAccount);
                 // if this relay is the last user relay, it will directly send data to validator
                 // Assuming the verifier is honest, so using socket
-                if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength - 1) {
+                if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
                     console.log('last relay: send data to validator');
                     let data = await getRelay2ValidatorData(savedData);
                     relaySendFinalData(data);
@@ -147,7 +147,7 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
             // send back to applicant, using ano
             if (res) {
                 sendNextRelay2AppData(preAppTempAccount);
-                if (savedData.appToRelayData?.lastUserRelay === true) {
+                if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
                     console.log('last relay: send data to validator');
                     let data = await getRelay2ValidatorData(savedData);
                     relaySendFinalData(data);
@@ -178,7 +178,7 @@ function verifyData(data: CombinedData) {
         r = data.appToRelayData.r,
         appTempAccount = data.appToRelayData.appTempAccount;
     if (!hf || !preHf || !r || !appTempAccount) return false;
-    let res1 = verifyHashForward(appTempAccount, r, hf, preHf);
+    let res1 = verifyHashForward(appTempAccount, r, hf, preHf, true);
     console.log('data to next relay, hash verification result: ', res1);
 
     // 数据不够, 只能验证正向hash

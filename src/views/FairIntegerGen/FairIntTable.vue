@@ -1,8 +1,12 @@
 <template>
     <div class="my-10">
         <!-- 进度条 -->
-        <el-steps :active="activeStep" finish-status="success">
-            <el-step v-for="number in totalStep" :key="number" @click.native="toStep(number - 1)"></el-step>
+        <el-steps :active="activeStep" simple finish-status="success">
+            <el-step
+                v-for="number in totalStep"
+                :key="number"
+                :title="'Step ' + number"
+                @click.native="toStep(number - 1)"></el-step>
         </el-steps>
 
         <!-- 表格展示 -->
@@ -32,7 +36,7 @@
                 </el-table-column>
                 <el-table-column prop="status" label="status">
                     <template #default="scope">
-                        {{ activeStep === chainLength - 1 ? 'no need fair integer generation' : scope.row.status }}
+                        {{ activeStep === chainLength ? 'no need fair integer generation' : scope.row.status }}
                     </template>
                 </el-table-column>
             </el-table>
@@ -48,7 +52,7 @@
             <span v-if="relays[activeStep + 1].relayNumber != -2" class="ml-14 text-2xl">{{ nextRelayMessage }}</span>
 
             <div class="ml-auto">
-                <div v-if="activeStep < chainLength - 1">
+                <div v-if="activeStep <= chainLength - 1">
                     <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5" color="#626aef"
                         >chain init</el-button
                     >
@@ -58,7 +62,7 @@
                     >
                     <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
                 </div>
-                <div v-else-if="activeStep == chainLength - 1">
+                <div v-else-if="activeStep == chainLength">
                     <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large"
                         >send to validator</el-button
                     >
@@ -112,7 +116,7 @@ let applicantStore = useApplicantStore();
 const { resetCurrentStep } = applicantStore;
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount } = loginStore;
-const totalStep = chainLength;
+const totalStep = chainLength + 1;
 
 // 页数跳转, 显示数据
 const activeStep = ref(0);

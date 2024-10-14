@@ -102,7 +102,7 @@ export function bindExtension(socket: Socket) {
             // use fake data
             let relayStore = useRelayStore();
             let { useFakeData } = relayStore;
-            if (useFakeData) data.n = -100;
+            if (useFakeData) data.t = '3333333333333333333333333333333333333333333333333333333333334455';
             let encryptedData = await getEncryptData(relayPubkey, data);
 
             // 当前relay使用anonymous account

@@ -66,6 +66,9 @@
                     <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large"
                         >send to validator</el-button
                     >
+                    <el-button type="primary" @click="verifyTokenAndReset(chainId)" class="mr-5" size="large"
+                        >verify token</el-button
+                    >
                 </div>
             </div>
         </div>
@@ -87,6 +90,7 @@ import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, wat
 import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, RelayAccount } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
+import { verifyTokenAndReset } from '@/views/FairIntegerGen/verifyTokenAndReset';
 
 // receive data from parent component
 const props = defineProps<{

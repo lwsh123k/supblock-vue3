@@ -6,6 +6,7 @@ import { socketMap } from '.';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResDate } from '@/ethers/chainData/chainDataType';
 import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
+import { toRef } from 'vue';
 
 // applicant -> validator: chain initialization data
 export function appSendInitData(chainIndex: number, appTemp0Address: string) {
@@ -19,12 +20,21 @@ export function appSendInitData(chainIndex: number, appTemp0Address: string) {
 
 // app listening: validator
 export function appRecevieValidatorData(socket: Socket) {
+    // receive token hash
     socket.on('verify correct', (data) => {
         // console.log(data);
         let { chainIndex, tokenHash } = data;
+        let { chainNumber } = useLoginStore();
+        if (chainIndex === null || chainIndex === undefined || chainIndex >= chainNumber) {
+            throw new Error('chain index error when chain initialization');
+        }
+        // save for later verification
+        const tokens = toRef(useApplicantStore(), 'tokens');
+        tokens.value[chainIndex].tokenHash = tokenHash;
         console.log(`chain initialization complete, token hash: ${tokenHash}, chain number: ${chainIndex}`);
     });
 
+    // receive token
     socket.on('validator send token t', async (data: { verify: Boolean; token: string; chainId: number }) => {
         console.log('verify data: ', data);
         let { chainId, token } = data;
@@ -37,14 +47,25 @@ export function appRecevieValidatorData(socket: Socket) {
         }
         // decrypt and sub all c
         let specificSendInfo = sendInfo[chainId],
-            oneChainTempAccountInfo = tempAccountInfo[chainId];
+            oneChainTempAccountInfo = tempAccountInfo[chainId],
+            tmpToken = token;
         for (let i = chainLength; i >= 1; i--) {
             console.log(`token: ${token}, i: ${i}, typeof token: ${typeof token}`);
             // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
             token = subHexAndMod(token, specificSendInfo.c[i]);
         }
         // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[0].key, token);
-        console.log(`token sub all c: ${token}, hash: ${keccak256(token)}`);
+
+        // save verify result
+        let calculatedToken = keccak256(token);
+        const tokens = toRef(useApplicantStore(), 'tokens');
+        let tokenHashReceived = tokens.value[chainId].tokenHash;
+        tokens.value[chainId].tokenReceived = tmpToken;
+        tokens.value[chainId].tokenDecrypted = token;
+        tokens.value[chainId].verifyResult = tokenHashReceived === calculatedToken;
+        console.log(
+            `token(sub all c): ${token}, hash received: ${tokenHashReceived}, hash calculated: ${calculatedToken}`
+        );
     });
 }
 

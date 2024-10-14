@@ -14,6 +14,14 @@ export type AppToRelayData = {
     lastUserRelay?: boolean;
 };
 
+// app received data
+export type AppReceivedData = {
+    tokenhash: string | null;
+    relayTempAccount: string | null;
+    encrypedToken: string | null;
+    endingAccount: string | null;
+};
+
 // current relay -> next relay
 export type PreToNextRelayData = {
     from: null | string; // current relay anonymous account

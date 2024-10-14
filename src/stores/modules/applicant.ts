@@ -28,6 +28,13 @@ export interface RelayAccount {
     anonymousAccount: string;
 }
 
+export type Token = {
+    tokenReceived: string;
+    tokenDecrypted: string;
+    tokenHash: string;
+    verifyResult: boolean;
+};
+
 // 存储appliacnt申请过程中的数据, 数据和statistics页面共享, 用于请求所需的gas
 export const useApplicantStore = defineStore('applicantStore', () => {
     // 表格数据项, 需要初始化其中的数据
@@ -80,6 +87,39 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         ];
     }
 
+    // reset table data
+    function resetTableData(chainId: number) {
+        for (let j = 0; j <= chainLength + 2; j++) {
+            resetCurrentStep(datas[chainId], j);
+        }
+    }
+
+    // reset relay info
+    function resetRelayInfo(chainId: number) {
+        relays[chainId][0] = {
+            relayNumber: -1, // -1: validator
+            relayFairInteger: -10,
+            b: -10,
+            publicKey:
+                '0x374462096f4ccdc90b97c0201d0ad8ff67da224026dc20e61c107f577db537d049648511e4e922ce74a0ff7494eeac72317e60a48cb2a71af21e4e2258fcca36',
+            realNameAccount: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba',
+            anonymousAccount: '0x863218e6ADad41bC3c2cb4463E26B625564ea3Ba'
+        };
+        for (let j = 1; j <= chainLength + 2; j++) {
+            relays[chainId][j] = {
+                relayNumber: -2, // -2: not defined, relayNumber = (relayFairInteger + b) % 100
+                relayFairInteger: -10,
+                b: -10, // not used, use sendInfo.b[] in login.ts
+                publicKey: '',
+                realNameAccount: '',
+                anonymousAccount: ''
+            };
+
+            // the last two is validator: chainLength+1, chainLength+2
+            if (chainId > chainLength) relays[chainId][j] = relays[chainId][0];
+        }
+    }
+
     // 定义并初始化relay信息. 第一维: 链的个数, 第二维: 链的长度
     let relays = reactive<RelayAccount[][]>(
         Array(chainNumber)
@@ -121,8 +161,19 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     // one dimension array, each element in it represents a relay index
     let relayIndex = reactive<number[]>(Array(chainNumber).fill(0));
 
+    // save token
+    let tokens = reactive<Token[]>([]);
+    for (let i = 0; i < chainNumber; i++) {
+        tokens.push({
+            tokenReceived: '',
+            tokenDecrypted: '',
+            tokenHash: '',
+            verifyResult: false
+        });
+    }
+
     // 重置
     function $reset() {}
 
-    return { datas, resetCurrentStep, relays, relayIndex };
+    return { datas, resetCurrentStep, relays, relayIndex, tokens, resetTableData, resetRelayInfo };
 });

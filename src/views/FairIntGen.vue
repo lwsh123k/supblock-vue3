@@ -17,9 +17,11 @@
                 <!-- <div>verify sig</div> -->
                 <!-- 单纯验证签名 -->
                 <div id="verifySig">
-                    <el-input v-model="c" class="input-spacing" placeholder="c值" />
-                    <el-input v-model="s" class="input-spacing" placeholder="s值" />
-                    <el-input v-model="t" class="input-spacing" placeholder="t值" />
+                    <el-input v-model=verifySig.c class="input-spacing" placeholder="c值" />
+                    <el-input v-model=verifySig.s class="input-spacing" placeholder="s值" />
+                    <el-input v-model=verifySig.chain0.t class="input-spacing" placeholder="t1值" />
+                    <el-input v-model=verifySig.chain1.t class="input-spacing" placeholder="t2值" />
+                    <el-input v-model=verifySig.chain2.t class="input-spacing" placeholder="t3值" />
                     <el-button type='primary' round plain @click="verifySignature">验证签名</el-button>
                     <p v-if="isVeri">验证结果: {{ verificationResult }}</p>
                 </div>
@@ -44,7 +46,7 @@ import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import { setNextRelayInfo } from './FairIntegerGen/updateNextRelay';
 import FairIntTable from './FairIntegerGen/FairIntTable.vue';
-
+import { useVerifyStore } from '@/stores/modules/verifySig';
 // 从store中导入数据
 let applicantStore = useApplicantStore();
 let datas = applicantStore.datas;
@@ -55,6 +57,7 @@ const loginStore = useLoginStore();
 const { chainLength, validatorAccount, sendInfo, allAccountInfo, tempAccountInfo } = loginStore;
 const totalStep = chainLength + 3;
 
+const verifySig = useVerifyStore();
 // 折叠面板
 const activeNames = ref(['1']);
 </script>

@@ -48,8 +48,8 @@
 
             <div class="ml-auto">
                 <div v-if="activeStep < chainLength - 1">
-                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5"
-                        color="#626aef">chain
+                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5" color="#626aef"
+                        :disabled="isChainInitDisabled">chain
                         init</el-button>
 
                     <el-button type="primary" @click="uploadHashAndListen" class="mr-5"
@@ -80,6 +80,9 @@ import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, wat
 import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, RelayAccount } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
+import { cs } from 'element-plus/es/locale/index.mjs';
+import eccBlind from '../eccBlind';
+import { useVerifyStore } from '@/stores/modules/verifySig';
 
 // receive data from parent component
 const props = defineProps<{
@@ -126,15 +129,60 @@ function prev() {
         activeStep.value--;
     }
 }
-
+interface PublicKey {
+    Rx: string;
+    Ry: string;
+    Px: string;
+    Py: string;
+}
+interface toApplicantSigned {
+    sBlind: string;
+    t_hash: string;
+}
 // chian init
+let isChainInitDisabled = ref(false);
 function chainInit() {
     try {
+        isChainInitDisabled.value = true;
         let appTemp0Address = oneChainTempAccount.selectedAccount[0].address;
         appSendInitData(chainId, appTemp0Address);
+        //console.log('1111');
+        let socket0 = socketMap.get(appTemp0Address);
+        const verifyStore = useVerifyStore();
+        if (verifyStore.c.length == 0) {
+            let publicKey: PublicKey = { Rx: '', Ry: '', Px: '', Py: '' };
+            socket0.off('validator send pubKey');
+            socket0.on('validator send pubKey', (data: PublicKey) => {
+                publicKey = data;
+                //console.log(`received pubKey:${publicKey.Px},${publicKey.Py}`)
+                eccBlind.deconPublicKey(publicKey.Rx, publicKey.Ry, publicKey.Px, publicKey.Py);
+                let blindedAddress = eccBlind.blindMessage(appTemp0Address);
+                //console.log(blindedAddress);
+                //const {c,s,t_hash}=storeToRefs(verifyStore);
+                //verifyStore.c = blindedAddress.c;
+                verifyStore.c = blindedAddress.c
+                socket0.emit('applicant send blindAds', blindedAddress.cBlinded);
+                socket0.off('First init,Validator send signedData');
+                socket0.on('First init,Validator send signedData', (data: toApplicantSigned) => {
+                    let { sBlind, t_hash } = data;
+                    verifyStore.writeT(chainId, t_hash);
+                    //console.log(`sBlind:${sBlind},t_hash:${t_hash}`);
+                    verifyStore.s = eccBlind.unblindSig(sBlind).s;
+                })
+                //socket0.off('Validator send signedData');
+            })
+            //socket0.off('validator send pubKey');
+        } else {
+            socket0.off('Inited,Validator send t_hash');
+            socket0.on('Inited,Validator send t_hash', (data: string) => {
+                verifyStore.writeT(chainId, data);
+            })
+
+        }
     } catch (error) {
         console.log(error);
     }
+
 }
 
 // hash上传

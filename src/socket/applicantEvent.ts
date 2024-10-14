@@ -14,6 +14,9 @@ export function appSendInitData(chainIndex: number, appTemp0Address: string) {
     // get data, returned data including chain num
     let data = getApp2RelayData(chainIndex, 0);
     socket0.emit('applicant to validator: initialization data', data);
+    // socket0.on('validator send pubKey', (publicKey: { Rx: string; Ry: string; Px: string; Py: string; }) => {
+    //     console.log(`received pubKey:${publicKey.Px},${publicKey.Py}`)
+    // })
 }
 
 // app listening: validator

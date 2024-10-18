@@ -107,7 +107,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         };
         for (let j = 1; j <= chainLength + 2; j++) {
             relays[chainId][j] = {
-                relayNumber: -2, // -2: not defined, relayNumber = (relayFairInteger + b) % 100
+                relayNumber: -2, // -2: not defined, relayNumber = (relayFairInteger + b) % 99 + 1
                 relayFairInteger: -10,
                 b: -10, // not used, use sendInfo.b[] in login.ts
                 publicKey: '',
@@ -144,7 +144,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         // 当下一个relay回送消息时, 可以知道relay anonymous account
         for (let j = 1; j <= chainLength + 2; j++) {
             relays[i][j] = {
-                relayNumber: -2, // -2: not defined, relayNumber = (relayFairInteger + b) % 100
+                relayNumber: -2, // -2: not defined, relayNumber = (relayFairInteger + b) % 99 + 1
                 relayFairInteger: -10,
                 b: -10, // not used, use sendInfo.b[] in login.ts
                 publicKey: '',

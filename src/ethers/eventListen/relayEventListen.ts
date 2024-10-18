@@ -165,7 +165,7 @@ function verifyData(data: CombinedData) {
     let b = data.preToNextRelayData.b,
         n = data.preToNextRelayData.n;
     if (!b || !n) return false;
-    let rnd = (b + n) % 100;
+    let rnd = ((b + n) % 99) + 1;
 
     // 验证l
     if (data.appToRelayData.l != data.preToNextRelayData.l + 1) {

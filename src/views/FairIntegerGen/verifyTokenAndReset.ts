@@ -12,7 +12,7 @@ export async function verifyTokenAndReset(chainId: number) {
     const tokens = toRef(useApplicantStore(), 'tokens');
     let { chainLength } = useLoginStore();
     if (tokens.value[chainId].verifyResult === true) {
-        console.log('token is correct');
+        console.log(`chain ${chainId}: token is correct`);
         ElMessage({
             message: 'Token successfully relayed',
             type: 'success',
@@ -38,7 +38,7 @@ export async function verifyTokenAndReset(chainId: number) {
             func2(chainId); // relay info
             relayIndex.value[chainId] = 0; // Currently interacting relay
             ElMessage({
-                message: 'Token is incorrect. Data has been reset.',
+                message: 'Token is incorrect. Data will be reset.',
                 type: 'error',
                 duration: 3000
             });

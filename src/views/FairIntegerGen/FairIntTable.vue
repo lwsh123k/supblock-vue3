@@ -14,7 +14,15 @@
             <el-table :data="datas[activeStep]">
                 <el-table-column prop="role" label="role">
                     <template #default="{ row }">
-                        <span class="">{{ row.role }}</span>
+                        <span v-if="row.role === 'appliacnt'" class="">{{
+                            'appliacnt ' +
+                            `(${processLongString(oneChainTempAccount.selectedAccount[activeStep].address)})`
+                        }}</span>
+                        <span v-else>{{
+                            'relay ' +
+                            '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' +
+                            `(${processLongString(relays[activeStep].anonymousAccount)})`
+                        }}</span>
                     </template>
                 </el-table-column>
                 <el-table-column prop="randomText" label="randon num">
@@ -350,7 +358,7 @@ watchEffect(async () => {
                 let nextStep = i + 1;
                 await setNextRelayInfo(chainId, nextStep, niReuploaded);
             } else {
-                let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 100;
+                let nextIndex = ((datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99) + 1;
                 let nextStep = i + 1;
                 await setNextRelayInfo(chainId, nextStep, nextIndex);
                 console.log('随机数正确 ');
@@ -385,8 +393,8 @@ const nextRelayMessage = computed(() => {
         // selected relay
         else
             return (
-                `next relay: (fair integer: ${relays[activeStep.value + 1].relayFairInteger} + blinding number: ${oneChainSendInfo.b[activeStep.value]}) % 100 = ` +
-                `${(relays[activeStep.value + 1].relayFairInteger + oneChainSendInfo.b[activeStep.value]) % 100}`
+                `next relay: (fair integer: ${relays[activeStep.value + 1].relayFairInteger} + blinding number: ${oneChainSendInfo.b[activeStep.value]}) % 99 + 1 = ` +
+                `${((relays[activeStep.value + 1].relayFairInteger + oneChainSendInfo.b[activeStep.value]) % 99) + 1}`
             );
     }
 });

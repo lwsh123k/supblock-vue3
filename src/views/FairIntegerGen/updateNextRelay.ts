@@ -33,13 +33,13 @@ export async function setNextRelayInfo(
     }
     console.log(`updating relay info in ${updatePlace}`);
 
-    // (n + b) % 100
+    // (n + b) % 99 + 1
     let b = oneChainSendInfo.b[nextRelayIndex - 1];
     relay[nextRelayIndex].b = b;
     relay[nextRelayIndex].relayFairInteger = ni;
-    relay[nextRelayIndex].relayNumber = (ni + b) % 100;
+    relay[nextRelayIndex].relayNumber = ((ni + b) % 99) + 1;
 
-    let accountInfo = await getAccountInfo((ni + b) % 100);
+    let accountInfo = await getAccountInfo(((ni + b) % 99) + 1);
     console.log('next relay real account info: ', accountInfo);
     relay[nextRelayIndex].publicKey = accountInfo.publicKey;
     relay[nextRelayIndex].realNameAccount = accountInfo.address;

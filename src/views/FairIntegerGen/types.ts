@@ -22,3 +22,16 @@ export interface RelayAccount {
     realNameAccount: string;
     anonymousAccount: string;
 }
+
+export interface PublicKey {
+    Rx: string;
+    Ry: string;
+    Px: string;
+    Py: string;
+}
+
+export interface toApplicantSigned {
+    chainId: number;
+    sBlind: string;
+    t_hash: string;
+}

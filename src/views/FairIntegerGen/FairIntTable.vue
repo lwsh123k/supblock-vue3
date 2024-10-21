@@ -16,12 +16,16 @@
                     <template #default="{ row }">
                         <span v-if="row.role === 'appliacnt'" class="">{{
                             'appliacnt ' +
-                            `(${processLongString(oneChainTempAccount.selectedAccount[activeStep].address)})`
+                            `(${
+                                oneChainTempAccount.selectedAccount[activeStep]?.address
+                                    ? processLongString(oneChainTempAccount.selectedAccount[activeStep].address)
+                                    : 'wait for login'
+                            })`
                         }}</span>
                         <span v-else>{{
                             'relay ' +
                             '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' +
-                            `(${processLongString(relays[activeStep].anonymousAccount)})`
+                            `(${relays[activeStep].anonymousAccount ? processLongString(relays[activeStep].anonymousAccount) : 'wait for selection'})`
                         }}</span>
                     </template>
                 </el-table-column>
@@ -96,9 +100,11 @@ import { ethers, Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import { setNextRelayInfo } from './updateNextRelay';
-import type { DataItem, RelayAccount } from './types';
+import type { DataItem, PublicKey, RelayAccount, toApplicantSigned } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
 import { verifyTokenAndReset } from '@/views/FairIntegerGen/verifyTokenAndReset';
+import eccBlind from './eccBlind';
+import { useVerifyStore } from '@/stores/modules/verifySig';
 
 // receive data from parent component
 const props = defineProps<{
@@ -147,8 +153,10 @@ function prev() {
 }
 
 // chian init
+let isChainInitDisabled = ref(false);
 function chainInit() {
     try {
+        isChainInitDisabled.value = true;
         let appTemp0Address = oneChainTempAccount.selectedAccount[0].address;
         appSendInitData(chainId, appTemp0Address);
     } catch (error) {
@@ -409,6 +417,7 @@ const nextRelayMessage = computed(() => {
     width: 99%;
     text-align: center;
 }
+
 /* 移除 Element Plus 表格的所有边框线 */
 :deep(.el-table th, .el-table td) {
     /* border: none !important; */
@@ -418,6 +427,7 @@ const nextRelayMessage = computed(() => {
     font-weight: normal;
     color: black;
 }
+
 :deep(.el-table td) {
     border: none !important;
     padding: 23px 0px;

@@ -8,12 +8,12 @@ import { getAccountInfo } from '@/api';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { bindExtension } from './extensionEvent';
-import { appRecevieRelayData, appRecevieValidatorData } from './applicantEvent';
+import { appGetSignature, appRecevieRelayData, appRecevieValidatorData } from './applicantEvent';
 
 // 每个正在使用的账号, 都要连接socket, 绑定extension, chain initialization事件
 // 在login store中初始化
 export let socketMap = new Map();
-export function socketInit(address: string, signedAuthString: string) {
+export function socketInit(address: string, signedAuthString: string, isFistTempAccount: boolean = false) {
     // initiate socket
     let socket = io('http://localhost:3000', {
         reconnectionAttempts: 5,
@@ -42,4 +42,9 @@ export function socketInit(address: string, signedAuthString: string) {
 
     // receive data from next relay
     appRecevieRelayData(socket);
+
+    // get signature hash, only use firsd temp account
+    if (isFistTempAccount) {
+        appGetSignature(socket);
+    }
 }

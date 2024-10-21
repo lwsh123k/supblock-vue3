@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router';
 import Header from '@/components/Header.vue';
-import FairIntGenCard from './views/FairIntGenCard.vue';
+import FairIntGenCard from './views/FairIntegerGen/FairIntGenCard.vue';
 import Stats from './views/Stats.vue';
 </script>
 

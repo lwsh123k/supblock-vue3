@@ -33,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+//////////////////////////////////////////////////////// unused //////////////////////////////////////////////
 const users = [
     { name: 'User A', hash: 'N/A', randomNumber: 'N/A', status: 'Waiting for Action', progress: 50 },
     { name: 'User B', hash: 'N/A', randomNumber: 'N/A', status: 'Waiting for Random Number', progress: 50 }

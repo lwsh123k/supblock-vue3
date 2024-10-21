@@ -53,6 +53,9 @@ dependencies:
   vue:
     specifier: ^3.4.15
     version: 3.4.15(typescript@5.3.3)
+  vue-demi:
+    specifier: ^0.14.10
+    version: 0.14.10(vue@3.4.15)
   vue-echarts:
     specifier: ^6.7.1
     version: 6.7.1(echarts@5.5.0)(vue@3.4.15)
@@ -67,9 +70,15 @@ devDependencies:
   '@typechain/ethers-v5':
     specifier: ^11.1.2
     version: 11.1.2(@ethersproject/abi@5.7.0)(@ethersproject/providers@5.7.2)(ethers@5.7.2)(typechain@8.3.2)(typescript@5.3.3)
+  '@types/bigi':
+    specifier: ^1.4.5
+    version: 1.4.5
   '@types/bn.js':
     specifier: ^5.1.1
     version: 5.1.1
+  '@types/ecurve':
+    specifier: ^1.0.3
+    version: 1.0.3
   '@types/keccak':
     specifier: ^3.0.4
     version: 3.0.4
@@ -986,10 +995,21 @@ packages:
       typescript: 5.3.3
     dev: true
 
+  /@types/bigi@1.4.5:
+    resolution: {integrity: sha512-fb5MUzazrD2GRnwlStm91HVu3cZbvolX9kJruqpUBdc24eHBWrLLfyt8XN1/C5JpI0stP/MbaFQp+cJh5WOFfw==}
+    dev: true
+
   /@types/bn.js@5.1.1:
     resolution: {integrity: sha512-qNrYbZqMx0uJAfKnKclPh+dTwK33KfLHYqtyODwd5HnXOjnkhc4qgn3BrK6RWyGZm5+sIFE7Q7Vz6QQtJB7w7g==}
     dependencies:
       '@types/node': 18.19.8
+
+  /@types/ecurve@1.0.3:
+    resolution: {integrity: sha512-u4vAyBNeKKyPbrXEOaJ83XOHp5korRsNUR1zmN8Uc99+QTb3Dwg3h7agf9fBIRdPagEG9rkphC8hCk2qSi3/Gg==}
+    dependencies:
+      '@types/bigi': 1.4.5
+      '@types/node': 18.19.8
+    dev: true
 
   /@types/estree@1.0.5:
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
@@ -1256,7 +1276,7 @@ packages:
       '@types/web-bluetooth': 0.0.16
       '@vueuse/metadata': 9.13.0
       '@vueuse/shared': 9.13.0(vue@3.4.15)
-      vue-demi: 0.14.6(vue@3.4.15)
+      vue-demi: 0.14.10(vue@3.4.15)
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
@@ -1269,7 +1289,7 @@ packages:
   /@vueuse/shared@9.13.0(vue@3.4.15):
     resolution: {integrity: sha512-UrnhU+Cnufu4S6JLCPZnkWh0WwZGUp72ktOF2DFptMlOs3TOdVv8xJN53zhHGARmVOsz5KqOls09+J1NR6sBKw==}
     dependencies:
-      vue-demi: 0.14.6(vue@3.4.15)
+      vue-demi: 0.14.10(vue@3.4.15)
     transitivePeerDependencies:
       - '@vue/composition-api'
       - vue
@@ -2982,7 +3002,7 @@ packages:
       '@vue/devtools-api': 6.5.1
       typescript: 5.3.3
       vue: 3.4.15(typescript@5.3.3)
-      vue-demi: 0.14.6(vue@3.4.15)
+      vue-demi: 0.14.10(vue@3.4.15)
     dev: false
 
   /pirates@4.0.6:
@@ -3882,8 +3902,8 @@ packages:
       vue: 3.4.15(typescript@5.3.3)
     dev: false
 
-  /vue-demi@0.14.6(vue@3.4.15):
-    resolution: {integrity: sha512-8QA7wrYSHKaYgUxDA5ZC24w+eHm3sYCbp0EzcDwKqN3p6HqtTCGR/GVsPyZW92unff4UlcSh++lmqDWN3ZIq4w==}
+  /vue-demi@0.14.10(vue@3.4.15):
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
     engines: {node: '>=12'}
     hasBin: true
     requiresBuild: true

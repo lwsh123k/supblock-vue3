@@ -29,12 +29,15 @@
         "rxjs": "^7.8.1",
         "socket.io-client": "^4.7.4",
         "vue": "^3.4.15",
+        "vue-demi": "^0.14.10",
         "vue-echarts": "^6.7.1",
         "vue-router": "^4.2.5"
     },
     "devDependencies": {
         "@tsconfig/node18": "^18.2.2",
         "@typechain/ethers-v5": "^11.1.2",
+        "@types/bigi": "^1.4.5",
+        "@types/ecurve": "^1.0.3",
         "@types/bn.js": "^5.1.1",
         "@types/keccak": "^3.0.4",
         "@types/node": "^18.19.8",

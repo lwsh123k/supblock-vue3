@@ -1,6 +1,7 @@
 import { getAccountInfo } from '@/api';
 import { verifyWrongData } from '@/api/verifyWrongData';
 import { getApp2ReceivedData, getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
+import { appSendConfirmation } from '@/socket/applicantEvent';
 import { useApplicantStore, type RelayAccount } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { ElMessage } from 'element-plus';
@@ -31,6 +32,7 @@ export async function verifyTokenAndReset(chainId: number) {
 
         // reset data
         if (result === false) {
+            console.log(`relayed token is wrong, chainid ${chainId}`);
             let appStore = useApplicantStore();
             let { resetTableData: func1, resetRelayInfo: func2 } = appStore;
             let relayIndex = toRef(appStore, 'relayIndex');
@@ -42,6 +44,10 @@ export async function verifyTokenAndReset(chainId: number) {
                 type: 'error',
                 duration: 3000
             });
+        } else if (result === true) {
+            console.log(`sending chain confirmation, chainid ${chainId}`);
+            // send chain confirmation to validator
+            appSendConfirmation(chainId);
         }
     }
 }

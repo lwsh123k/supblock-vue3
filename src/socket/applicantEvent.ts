@@ -70,6 +70,12 @@ export function appRecevieValidatorData(socket: Socket) {
             `token(sub all c): ${token}, hash received: ${tokenHashReceived}, hash calculated: ${calculatedToken}`
         );
     });
+
+    // chain confirmation
+    socket.on('chain confirmation result', (data: { result: boolean }) => {
+        let res = data.result;
+        console.log(`chain confirmation result: ${res}`);
+    });
 }
 
 // get signature, register with app temp account[0]
@@ -157,6 +163,21 @@ export async function appSendFinalData(chainIndex: number) {
     // get data, returned data including chain num
     let data = getApp2RelayData(chainIndex, chainLength + 1);
     socket0.emit('applicant to validator: final data', data);
+}
+
+// applicant sends chain confirmation to validator
+export async function appSendConfirmation(chainIndex: number) {
+    // obtain the account corresponding to the validator
+    let { tempAccountInfo, chainLength } = useLoginStore();
+    let appTempAddress = tempAccountInfo[chainIndex].selectedAccount[chainLength + 1].address;
+    console.log(`using ${appTempAddress} to send chain confirmation to validator`);
+
+    // applicant to validator, using temp chain length-1 account
+    let socket0 = socketMap.get(appTempAddress);
+    if (!socket0) throw new Error('socket not found when sending chain confirmation');
+    // get data, returned data including chain num
+    let data = getApp2RelayData(chainIndex, chainLength + 2);
+    socket0.emit('applicant to validator: chain confirmation', data);
 }
 
 // validator send back: 申请者发送init, validator回送token hash

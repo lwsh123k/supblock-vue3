@@ -62,7 +62,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
         data.to = validatorAccount;
-        data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
+        data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address; // ending account为chain length + 2
         data.appTempAccountPubkey = getPubkeyFromKey(privatekay);
         data.r = oneChainSendInfo.r[relayNumber];
     }

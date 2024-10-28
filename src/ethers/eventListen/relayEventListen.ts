@@ -123,7 +123,12 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
             let res = verifyData(savedData);
             // send back to applicant, using ano
             if (res) {
-                sendNextRelay2AppData(preAppTempAccount);
+                let hashforward = data.hf;
+                if (!hashforward) {
+                    console.log(`hash forward is null or undefined`);
+                    return;
+                }
+                await sendNextRelay2AppData(preAppTempAccount, hashforward);
                 // if this relay is the last user relay, it will directly send data to validator
                 // Assuming the verifier is honest, so using socket
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
@@ -146,7 +151,12 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
             let res = verifyData(savedData);
             // send back to applicant, using ano
             if (res) {
-                sendNextRelay2AppData(preAppTempAccount);
+                let hashforward = savedData.appToRelayData?.hf;
+                if (!hashforward) {
+                    console.log(`hash forward is null or undefined`);
+                    return;
+                }
+                await sendNextRelay2AppData(preAppTempAccount, hashforward);
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
                     console.log('last relay: send data to validator');
                     let data = await getRelay2ValidatorData(savedData);

@@ -1,12 +1,12 @@
-import axios from "axios";
+import axios from 'axios';
 
 // 自定义axios请求
 
 //1、对axios二次封装
 const requests = axios.create({
     //基础路径，requests发出的请求在端口号后面会跟改baseURl
-    baseURL: "http://localhost:3000",
-    timeout: 2500,
+    baseURL: 'http://localhost:3000',
+    timeout: 5000
 });
 
 //2、配置请求拦截器
@@ -23,8 +23,8 @@ requests.interceptors.response.use(
         return res.data;
     },
     (error) => {
-        console.log("响应失败" + error);
-        return Promise.reject(new Error("fail"));
+        console.log('响应失败' + error);
+        return Promise.reject(new Error('fail'));
     }
 );
 

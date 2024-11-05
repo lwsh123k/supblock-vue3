@@ -7,6 +7,7 @@ import { useSocketStore } from './socket';
 import { keccak256 } from '@/ethers/util';
 import { socketInit } from '@/socket';
 import type { Socket } from 'socket.io-client';
+import { listenRelayRes } from '@/ethers/eventListen/appEventListen';
 
 // nested type used in other interface
 interface Account {
@@ -154,20 +155,31 @@ export const useLoginStore = defineStore('login', () => {
         accountNeedLogin = Array.from(new Map(accountNeedLogin.map((account) => [account.address, account])).values());
         let isApplicant = privateKey.length === 102 ? true : false;
         await socketLogin(accountNeedLogin, isApplicant);
+
+        // listen relay temp account
+        if (isApplicant) {
+            let tempAccount = tempAccountInfo.flatMap((item) => item.selectedAccount.map((account) => account.address));
+            await listenRelayRes(tempAccount);
+        }
     }
 
     // socket登录:
     async function socketLogin(loginAccunt: Account[], isApplicant: boolean = false) {
-        for (let i = 0; i < loginAccunt.length; i++) {
-            let item = loginAccunt[i];
-            let { key, address } = item;
-            let authString = (await getAuthString(address)).message;
-            let wallet = new ethers.Wallet(key);
-            let signedAuthString = await wallet.signMessage(authString);
-            // 对于第一个temp account, 需要接收token hash
-            if (i === 0 && isApplicant) socketInit(address, signedAuthString, true);
-            else socketInit(address, signedAuthString);
-        }
+        await Promise.all(
+            loginAccunt.map(async (item, index) => {
+                let { key, address } = item;
+                let authString = (await getAuthString(address)).message;
+                let wallet = new ethers.Wallet(key);
+                let signedAuthString = await wallet.signMessage(authString);
+
+                // 对于第一个temp account，需要接收token hash
+                if (index === 0 && isApplicant) {
+                    socketInit(address, signedAuthString, true);
+                } else {
+                    socketInit(address, signedAuthString);
+                }
+            })
+        );
     }
 
     // 生成指定长度的随机字节数组

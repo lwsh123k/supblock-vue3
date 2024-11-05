@@ -2,6 +2,7 @@ import { useLoginStore } from '@/stores/modules/login';
 import type { AppReceivedData, AppToRelayData } from './chainDataType';
 import { ethers } from 'ethers';
 import { useApplicantStore } from '@/stores/modules/applicant';
+import { useVerifyStore } from '@/stores/modules/verifySig';
 
 // applicant -> next relay data
 // use chainNum and relayNum to determine sending data
@@ -31,17 +32,17 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hb = oneChainSendInfo.hashBackward[0];
         data.b = oneChainSendInfo.b[0];
     } else if (relayNumber >= 1 && relayNumber <= chainLength - 1) {
-        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber].key;
+        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address; // 发送者为pre applicant temp account
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address; // 数据包含和下一个relay交互的账户
-        data.appTempAccountPubkey = getPubkeyFromKey(privatekay);
+        data.appTempAccountPubkey = getPubkeyFromKey(privatekay); // from对应的pubkey
         data.r = oneChainSendInfo.r[relayNumber];
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.b = oneChainSendInfo.b[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
     } else if (relayNumber === chainLength) {
-        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber].key;
+        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
         data.appTempAccountPubkey = getPubkeyFromKey(privatekay);
@@ -50,7 +51,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
     } else if (relayNumber === chainLength + 1) {
-        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber].key;
+        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
         data.to = validatorAccount;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address;
@@ -59,7 +60,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
     } else if (relayNumber === chainLength + 2) {
-        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber].key;
+        let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
         data.to = validatorAccount;
         data.appTempAccount = oneChainTempAccountInfo.selectedAccount[relayNumber].address; // ending account为chain length + 2
@@ -70,13 +71,15 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
     return data;
 }
 
+// 验证数据错误时使用
 export function getApp2ReceivedData(chainIndex: number, relayIndex: number) {
     const loginStore = useLoginStore();
     const { chainLength, chainNumber, allAccountInfo, validatorAccount, sendInfo, tempAccountInfo } = loginStore;
     if (chainIndex > chainNumber || relayIndex > chainNumber + 2) {
         throw new Error('error chain index or relay number');
     }
-    let { relays, tokens } = useApplicantStore();
+    let { relays } = useApplicantStore();
+    let { tokens } = useVerifyStore();
     let chainRelay = relays[chainIndex];
     let chainToken = tokens[chainIndex];
 
@@ -92,7 +95,7 @@ export function getApp2ReceivedData(chainIndex: number, relayIndex: number) {
     } else if (relayIndex >= 1 && relayIndex <= chainLength) {
         data.relayTempAccount = chainRelay[relayIndex].anonymousAccount;
     } else if (relayIndex === chainLength + 1) {
-        data.encrypedToken = chainToken.tokenReceived;
+        data.encrypedToken = chainToken.tokenReceived; // 从validator接收到的token
     } else if (relayIndex === chainLength + 2) {
         data.endingAccount = oneChainTempAccountInfo.selectedAccount[chainLength + 2].address;
     }

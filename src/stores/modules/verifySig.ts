@@ -1,48 +1,46 @@
-import { number } from 'echarts';
+import type { Point } from 'ecurve';
 import { defineStore } from 'pinia';
-import { stringify } from 'querystring';
-export const useVerifyStore = defineStore('verifySig', {
-    actions: {
-        // writeC(chainIndex: number, c: string) {
-        //     if (chainIndex == 0) {
-        //         this.chain0.c = c;
-        //     } else if (chainIndex == 1) {
-        //         this.chain1.c = c;
-        //     } else if (chainIndex == 2) {
-        //         this.chain2.c = c;
-        //     }
-        // },
-        // writeS(chainIndex: number, s: string) {
-        //     if (chainIndex == 0) {
-        //         this.chain0.s = s;
-        //     } else if (chainIndex == 1) {
-        //         this.chain1.s = s;
-        //     } else if (chainIndex == 2) {
-        //         this.chain2.s = s;
-        //     }
-        // },
-        writeT(tokenHashArray: string[]) {
-            this.chain0.t_hash = tokenHashArray[0];
-            this.chain1.t_hash = tokenHashArray[1];
-            this.chain2.t_hash = tokenHashArray[2];
-        }
-    },
-    state() {
-        return {
-            c: '',
-            s: '',
-            chain0: {
-                t_hash: '',
-                t: ''
-            },
-            chain1: {
-                t_hash: '',
-                t: ''
-            },
-            chain2: {
-                t_hash: '',
-                t: ''
-            }
-        };
+import { ref, reactive } from 'vue';
+import type { Token } from './applicant';
+
+export const useVerifyStore = defineStore('verifySig', () => {
+    const chainNumber = 3;
+
+    // State
+    const pointR = ref<Point>();
+    const pointP = ref<Point>();
+    const blindedMessage = reactive({ c: '', cBlinded: '', s: '', γ: '', δ: '' });
+    const chain0 = reactive({ t_hash: '', t: '' });
+    const chain1 = reactive({ t_hash: '', t: '' });
+    const chain2 = reactive({ t_hash: '', t: '' });
+
+    // save token
+    let tokens = reactive<Token[]>([]);
+    for (let i = 0; i < chainNumber; i++) {
+        tokens.push({
+            tokenReceived: '',
+            tokenDecrypted: '',
+            tokenHash: '',
+            verifyResult: false
+        });
     }
+
+    // Actions
+    function writeT(tokenHashArray: string[]) {
+        chain0.t_hash = tokenHashArray[0];
+        chain1.t_hash = tokenHashArray[1];
+        chain2.t_hash = tokenHashArray[2];
+    }
+
+    // Return state and actions for use in components
+    return {
+        pointR,
+        pointP,
+        blindedMessage,
+        chain0,
+        chain1,
+        chain2,
+        writeT,
+        tokens
+    };
 });

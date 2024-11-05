@@ -131,3 +131,12 @@ export function subHexAndMod(hex1: string, hex2: string) {
     // 将结果转换回64位16进制字符串
     return result.toString(16).padStart(64, '0');
 }
+
+export function ensure0xPrefix(str: string) {
+    if (!str) return str;
+    const value = String(str);
+    if (value.toLowerCase().startsWith('0x')) {
+        return value;
+    }
+    return `0x${value}`;
+}

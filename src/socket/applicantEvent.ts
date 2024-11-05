@@ -6,7 +6,7 @@ import { socketMap } from '.';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResDate } from '@/ethers/chainData/chainDataType';
 import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
-import { toRef } from 'vue';
+import { toRef, toRefs } from 'vue';
 import type { PublicKey, toApplicantSigned } from '@/views/FairIntegerGen/types';
 import eccBlind from '@/views/FairIntegerGen/eccBlind';
 import { useVerifyStore } from '@/stores/modules/verifySig';
@@ -19,11 +19,12 @@ export function appSendInitData(chainIndex: number, appTemp0Address: string) {
     // get data, returned data including chain num
     let data = getApp2RelayData(chainIndex, 0);
     socket0.emit('applicant to validator: initialization data', data);
+    console.log(`app send chain initialization data, chain id: ${chainIndex}`);
 }
 
 // app listening: validator
 export function appRecevieValidatorData(socket: Socket) {
-    // receive token hash(deprecated, using validator send sig and hash)
+    // 已放弃使用. receive token hash(deprecated, using validator send sig and hash)
     socket.on('verify correct', (data) => {
         // console.log(data);
         let { chainIndex, tokenHash } = data;
@@ -32,12 +33,12 @@ export function appRecevieValidatorData(socket: Socket) {
             throw new Error('chain index error when chain initialization');
         }
         // save for later verification
-        const tokens = toRef(useApplicantStore(), 'tokens');
+        const tokens = toRef(useVerifyStore(), 'tokens');
         tokens.value[chainIndex].tokenHash = tokenHash;
         console.log(`chain initialization complete, token hash: ${tokenHash}, chain number: ${chainIndex}`);
     });
 
-    // receive token
+    // applicant从validator接收最终的加上c的token
     socket.on('validator send token t', async (data: { verify: Boolean; token: string; chainId: number }) => {
         console.log('verify data: ', data);
         let { chainId, token } = data;
@@ -53,15 +54,15 @@ export function appRecevieValidatorData(socket: Socket) {
             oneChainTempAccountInfo = tempAccountInfo[chainId],
             tmpToken = token;
         for (let i = chainLength; i >= 1; i--) {
-            console.log(`token: ${token}, i: ${i}, typeof token: ${typeof token}`);
             // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
             token = subHexAndMod(token, specificSendInfo.c[i]);
+            console.log(`${i}-th round, after subtracting, token: ${token}`);
         }
         // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[0].key, token);
 
         // save verify result
         let calculatedToken = keccak256(token);
-        const tokens = toRef(useApplicantStore(), 'tokens');
+        const tokens = toRef(useVerifyStore(), 'tokens');
         let tokenHashReceived = tokens.value[chainId].tokenHash;
         tokens.value[chainId].tokenReceived = tmpToken;
         tokens.value[chainId].tokenDecrypted = token;
@@ -92,34 +93,54 @@ export function appGetSignature(socket0: Socket) {
         let publicKey: PublicKey = { Rx: '', Ry: '', Px: '', Py: '' };
         publicKey = data;
         //console.log(`received pubKey:${publicKey.Px},${publicKey.Py}`)
-        eccBlind.deconPublicKey(publicKey.Rx, publicKey.Ry, publicKey.Px, publicKey.Py);
-        let blindedAddress = eccBlind.blindMessage(appEndingAccount);
+
+        // 保存R, P, 如果之前没有盲化过信息, 盲化; 否则从保存的取出
+        let { blindedMessage, pointP, pointR } = storeToRefs(verifyStore);
+        let [R, P] = eccBlind.deconPublicKey(publicKey.Rx, publicKey.Ry, publicKey.Px, publicKey.Py);
+        (pointP.value = P), (pointR.value = R);
+        let blindedAddress;
+        if (blindedMessage.value.c === '') {
+            blindedAddress = eccBlind.blindMessage(appEndingAccount);
+            blindedMessage.value.c = blindedAddress.c;
+            blindedMessage.value.cBlinded = blindedAddress.cBlinded;
+            blindedMessage.value.γ = blindedAddress.c;
+            blindedMessage.value.δ = blindedAddress.c;
+        } else {
+            // 从存储中获取
+            blindedAddress = {
+                c: blindedMessage.value.c,
+                cBlinded: blindedMessage.value.cBlinded,
+                γ: blindedMessage.value.γ,
+                δ: blindedMessage.value.δ
+            };
+        }
         //console.log(blindedAddress);
-        //const {c,s,t_hash}=storeToRefs(verifyStore);
-        //verifyStore.c = blindedAddress.c;
-        verifyStore.c = blindedAddress.c;
         let data1: AppBlindedAddress = {
             from: firstAccount,
             to: 'validator',
-            chainId: 1,
+            chainId: 1, // 一次获取所有t, chain id可以为定值
             blindedAddress: blindedAddress.cBlinded
         };
         socket0.emit('applicant send blinded address', data1);
+        console.log(`app receive pubkey, send blinded address`);
     });
 
     // receive blinded signature and hash of token t
     socket0.on('validator send sig and hash', (data: ValidatorSendBackSig) => {
-        let { chainIndex, sBlind, tokenHash: tokenHashArray } = data;
+        let { chainIndex, sBlind, tokenHash: tokenHashArray, point } = data;
+        console.log(`app receive sig and hash, token hash array: ${tokenHashArray}, chain number: ${chainIndex}`);
+        eccBlind.deconPublicKey(point.Rx, point.Ry, point.Px, point.Py);
         verifyStore.writeT(tokenHashArray);
         //console.log(`sBlind:${sBlind},t_hash:${t_hash}`);
-        verifyStore.s = eccBlind.unblindSig(sBlind).s;
+        let blindedMessage = toRef(verifyStore, 'blindedMessage');
+        blindedMessage.value.s = eccBlind.unblindSig(sBlind, blindedMessage.value.γ).s;
 
         // save for later verification(不破坏其他部分)
-        const tokens = toRef(useApplicantStore(), 'tokens');
+        const tokens = toRef(verifyStore, 'tokens');
         tokens.value[0].tokenHash = tokenHashArray[0];
         tokens.value[1].tokenHash = tokenHashArray[1];
         tokens.value[2].tokenHash = tokenHashArray[2];
-        console.log(`chain initialization complete, token hash array: ${tokenHashArray}, chain number: ${chainIndex}`);
+        console.log(`chain initialization complete`);
     });
 }
 
@@ -131,7 +152,9 @@ export function appRecevieRelayData(socket: Socket) {
     socket.on('next relay to app', (data: RelayResDate) => {
         // console.log(data);
         let { from, to, nextRelayAnonymousAccount, chainIndex } = data;
-        console.log(`chain index: ${chainIndex}, next relay anonymous account: ${nextRelayAnonymousAccount}`);
+        console.log(
+            `update relay anonymous account in socket, chain index: ${chainIndex}, next relay anonymous account: ${nextRelayAnonymousAccount}`
+        );
 
         // update relays to use the relay's anonymous account in next round of joint random selection
         relays[chainIndex][relayIndex.value[chainIndex]].anonymousAccount = nextRelayAnonymousAccount;
@@ -187,6 +210,14 @@ type ValidatorSendBackSig = {
     chainIndex: number; // 可以不用, 一次将所有hash发送回去
     sBlind: string;
     tokenHash: [string, string, string];
+    point: EccPoint;
+};
+
+export type EccPoint = {
+    Rx: string;
+    Ry: string;
+    Px: string;
+    Py: string;
 };
 
 // 申请者将盲化后的信息发给validator签名

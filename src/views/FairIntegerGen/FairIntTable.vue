@@ -99,7 +99,6 @@ import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
-import { setNextRelayInfo } from './updateNextRelay';
 import type { DataItem, PublicKey, RelayAccount, toApplicantSigned } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
 import { verifyTokenAndReset } from '@/views/FairIntegerGen/verifyTokenAndReset';
@@ -131,7 +130,7 @@ const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainId } = props;
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
-const { resetCurrentStep } = applicantStore;
+const { resetCurrentStep, setNextRelayRealnameInfo } = applicantStore;
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount } = loginStore;
 const totalStep = chainLength + 1;
@@ -210,7 +209,7 @@ async function uploadHashAndListen() {
     await send2Extension(addressA, addressB, hash, b);
 
     //上传hash
-    console.log(hash);
+    console.log('hash: ', hash);
     await writeFair.setReqHash(addressB, hash);
     datas[step][0].status = 'hash已上传';
 
@@ -251,7 +250,7 @@ async function uploadHashAndListen() {
             console.log('监听到relay随机数');
         })
         .catch(async (error: Error) => {
-            // 超时 && 自己已上传 && 上传的是对的
+            // 超时 && 自己已上传 && 自己上传的是对的
             if (
                 error.message === 'not upload random num' &&
                 datas[step][0].isUpload === true &&
@@ -267,7 +266,7 @@ async function uploadHashAndListen() {
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
                 // set next relay number, update next relay info
-                await setNextRelayInfo(chainId, ++currentStep, ni);
+                await setNextRelayRealnameInfo(chainId, ++currentStep, ni);
             }
         });
 
@@ -278,8 +277,9 @@ async function uploadHashAndListen() {
             datas[step][1].randomNumAfter = ni;
             datas[step][1].status = '随机数已重新上传';
             datas[step][1].randomText = datas[step][1].randomNumBefore + ' / ' + ni.toString();
+            datas[step][1].isReupload = true;
             console.log('监听到relay重传随机数');
-            await setNextRelayInfo(chainId, ++currentStep, ni);
+            await setNextRelayRealnameInfo(chainId, ++currentStep, ni);
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -364,11 +364,11 @@ watchEffect(async () => {
                 datas[i][0].isReupload = true;
                 // 设置next relay
                 let nextStep = i + 1;
-                await setNextRelayInfo(chainId, nextStep, niReuploaded);
+                await setNextRelayRealnameInfo(chainId, nextStep, niReuploaded);
             } else {
-                let nextIndex = ((datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99) + 1;
+                let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99;
                 let nextStep = i + 1;
-                await setNextRelayInfo(chainId, nextStep, nextIndex);
+                await setNextRelayRealnameInfo(chainId, nextStep, nextIndex);
                 console.log('随机数正确 ');
             }
 
@@ -399,11 +399,18 @@ const nextRelayMessage = computed(() => {
         else if (relays[activeStep.value + 1].relayNumber == -1)
             return 'next relay: validator'; // relay is validator
         // selected relay
-        else
+        else {
+            let numA = datas[activeStep.value][0].randomNumAfter,
+                numB = datas[activeStep.value][1].randomNumAfter;
+            // 一方重传, 另一方按0计算
+            numB = datas[activeStep.value][0].isReupload ? 0 : numB;
+            numA = datas[activeStep.value][1].isReupload ? 0 : numA;
             return (
-                `next relay: (fair integer: ${relays[activeStep.value + 1].relayFairInteger} + blinding number: ${oneChainSendInfo.b[activeStep.value]}) % 99 + 1 = ` +
+                `next relay: (fair integer: ${numA} + ${numB} + ` +
+                `blinding number: ${oneChainSendInfo.b[activeStep.value]}) % 99 + 1 = ` +
                 `${((relays[activeStep.value + 1].relayFairInteger + oneChainSendInfo.b[activeStep.value]) % 99) + 1}`
             );
+        }
     }
 });
 </script>

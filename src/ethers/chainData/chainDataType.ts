@@ -11,7 +11,6 @@ export type AppToRelayData = {
     c: null | string;
     l: number; // 比PreToNextRelayData中l大一
     chainIndex: number;
-    lastUserRelay?: boolean;
 };
 
 // app received data
@@ -40,6 +39,7 @@ export type RelayResDate = {
     from: string;
     to: string;
     nextRelayAnonymousAccount: string;
+    appToRelayDataHash: string; // app给relay发送的数据的hash
     chainIndex: number;
 };
 
@@ -47,6 +47,7 @@ export type RelayResDate = {
 export type CombinedData = {
     appToRelayData?: AppToRelayData;
     preToNextRelayData?: PreToNextRelayData;
+    appToRelayDataHash?: string;
 };
 
 // data: pre applicant temp   and   pre relay -> next relay

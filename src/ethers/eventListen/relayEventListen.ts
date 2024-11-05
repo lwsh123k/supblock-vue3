@@ -2,7 +2,7 @@ import { useLoginStore } from '@/stores/modules/login';
 import { getFairIntGen, getStoreData } from '../contract';
 import { Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
-import { getDecryptData, verifyHashBackward, verifyHashForward } from '../util';
+import { ensure0xPrefix, getDecryptData, keccak256, verifyHashBackward, verifyHashForward } from '../util';
 import { sendNextRelay2AppData } from '../chainData/getRelayResData';
 import {
     relaySend2NextData,
@@ -69,23 +69,26 @@ export async function backendListen() {
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
-    storeData.on(app2Relayfilter, async (from, relay, data, dataIndex, lastRelay) => {
+    storeData.on(app2Relayfilter, async (from, relay, data, dataHash, dataIndex, lastRelay) => {
         console.log('监听到app to next relay消息');
 
         // decode and save. 解码的数据中包含applicant下次要用的账号
         let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
-        decodedData.lastUserRelay = lastRelay;
-        let { from: from1, to, appTempAccount, r, hf, hb, b, c } = decodedData;
-        console.log(decodedData);
-
-        // save data to nexe relay. 发送pre applicant发送来的数据
-        // if (appTempAccount === null) throw new Error('app to next relay data error');
-        // saveData2NextRelay(appTempAccount, 'pre appliacnt', decodedData);
+        // 验证接收到的数据和hash一致
+        let computedHash = keccak256(JSON.stringify(decodedData));
+        computedHash = ensure0xPrefix(computedHash);
+        let hashVerifyResult = computedHash === dataHash;
+        if (!hashVerifyResult) {
+            console.log(`hash verification not pass, reactived hash: ${dataHash}, computed hash: ${computedHash}`);
+            return;
+        }
+        console.log(`app -> relay: ${decodedData}`);
 
         // verify data and send back
         // next relay通过socket使用匿名账户回复applicant
+        // decodedData.lastUserRelay = lastRelay;
         let preAppTempAccount = from; // 对应关系
-        await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData);
+        await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData, dataHash);
     });
 
     // next relay listening: current relay -> next relay, using real name account
@@ -103,7 +106,12 @@ export async function backendListen() {
     });
 }
 
-async function checkPreDataAndRes(preAppTempAccount: string, from: string, data: AppToRelayData | PreToNextRelayData) {
+async function checkPreDataAndRes(
+    preAppTempAccount: string,
+    from: string,
+    data: AppToRelayData | PreToNextRelayData,
+    dataHash: string = ''
+) {
     const { chainLength } = useLoginStore();
     let savedData = relayReceivedData.get(preAppTempAccount);
 
@@ -115,20 +123,16 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
     // 判断是谁调用
     if (from === 'pre appliacnt temp account') {
         savedData.appToRelayData = data as AppToRelayData;
+        savedData.appToRelayDataHash = dataHash;
         relayReceivedData.set(preAppTempAccount, savedData);
-        console.log(relayReceivedData.get(preAppTempAccount));
         // 通过保存数据, 检查对方是否上传数据; 如果上传, 就检查数据是否正确
         if ('preToNextRelayData' in savedData) {
             // verify, fair intager, hashforward, hashbackward
+            console.log('verify data: ', relayReceivedData.get(preAppTempAccount));
             let res = verifyData(savedData);
             // send back to applicant, using ano
             if (res) {
-                let hashforward = data.hf;
-                if (!hashforward) {
-                    console.log(`hash forward is null or undefined`);
-                    return;
-                }
-                await sendNextRelay2AppData(preAppTempAccount, hashforward);
+                await sendNextRelay2AppData(preAppTempAccount, dataHash);
                 // if this relay is the last user relay, it will directly send data to validator
                 // Assuming the verifier is honest, so using socket
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
@@ -143,20 +147,20 @@ async function checkPreDataAndRes(preAppTempAccount: string, from: string, data:
     } else if (from === 'pre relay account') {
         savedData.preToNextRelayData = data as PreToNextRelayData;
         relayReceivedData.set(preAppTempAccount, savedData);
-        console.log(relayReceivedData.get(preAppTempAccount));
 
         // check if the other side has uploaded data, if so, verify data
         if ('appToRelayData' in savedData) {
             // verify
+            console.log('verify data: ', relayReceivedData.get(preAppTempAccount));
             let res = verifyData(savedData);
             // send back to applicant, using ano
             if (res) {
-                let hashforward = savedData.appToRelayData?.hf;
-                if (!hashforward) {
-                    console.log(`hash forward is null or undefined`);
+                let dataHash = savedData.appToRelayDataHash;
+                if (!dataHash) {
+                    console.log(`data hash is null or undefined`);
                     return;
                 }
-                await sendNextRelay2AppData(preAppTempAccount, hashforward);
+                await sendNextRelay2AppData(preAppTempAccount, dataHash);
                 if (savedData.appToRelayData?.l && savedData.appToRelayData?.l === chainLength) {
                     console.log('last relay: send data to validator');
                     let data = await getRelay2ValidatorData(savedData);
@@ -174,7 +178,7 @@ function verifyData(data: CombinedData) {
     // 验证随机数(每个账号都知道自己的唯一标识)
     let b = data.preToNextRelayData.b,
         n = data.preToNextRelayData.n;
-    if (!b || !n) return false;
+    if (b === null || n === null) return false;
     let rnd = ((b + n) % 99) + 1;
 
     // 验证l
@@ -189,7 +193,7 @@ function verifyData(data: CombinedData) {
         appTempAccount = data.appToRelayData.appTempAccount;
     if (!hf || !preHf || !r || !appTempAccount) return false;
     let res1 = verifyHashForward(appTempAccount, r, hf, preHf, true);
-    console.log('data to next relay, hash verification result: ', res1);
+    console.log('receive data from pre relay and applicant, hash chain verification result: ', res1);
 
     // 数据不够, 只能验证正向hash
     let hb = data.preToNextRelayData.hb,

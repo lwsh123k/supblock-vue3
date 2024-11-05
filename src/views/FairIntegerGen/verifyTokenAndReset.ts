@@ -4,13 +4,14 @@ import { getApp2ReceivedData, getApp2RelayData } from '@/ethers/chainData/getApp
 import { appSendConfirmation } from '@/socket/applicantEvent';
 import { useApplicantStore, type RelayAccount } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
+import { useVerifyStore } from '@/stores/modules/verifySig';
 import { ElMessage } from 'element-plus';
 import { storeToRefs } from 'pinia';
 import { toRef } from 'vue';
 
 // whether reset
 export async function verifyTokenAndReset(chainId: number) {
-    const tokens = toRef(useApplicantStore(), 'tokens');
+    const tokens = toRef(useVerifyStore(), 'tokens');
     let { chainLength } = useLoginStore();
     if (tokens.value[chainId].verifyResult === true) {
         console.log(`chain ${chainId}: token is correct`);

@@ -25,8 +25,8 @@
                 <!-- <div>verify sig</div> -->
                 <!-- 单纯验证签名 -->
                 <div id="verifySig">
-                    <el-input v-model="verifySig.c" class="input-spacing" placeholder="c值" />
-                    <el-input v-model="verifySig.s" class="input-spacing" placeholder="s值" />
+                    <el-input v-model="verifySig.blindedMessage.c" class="input-spacing" placeholder="c值" />
+                    <el-input v-model="verifySig.blindedMessage.s" class="input-spacing" placeholder="s值" />
                     <br />
                     <el-input v-model="verifySig.chain0.t" class="input-spacing" placeholder="t1值" />
                     <el-input v-model="verifySig.chain1.t" class="input-spacing" placeholder="t2值" />
@@ -58,7 +58,6 @@ import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
-import { setNextRelayInfo } from './FairIntegerGen/updateNextRelay';
 import FairIntTable from './FairIntegerGen/FairIntTable.vue';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 // 从store中导入数据

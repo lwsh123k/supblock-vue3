@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { reactive, ref } from 'vue';
 import { useLoginStore } from './login';
+import { getAccountInfo } from '@/api';
 
 // 表格中的行数据信息
 export interface DataItem {
@@ -127,11 +128,12 @@ export const useApplicantStore = defineStore('applicantStore', () => {
             .map(() => [])
     );
 
-    // relayNumber: validator = -1, not defined: -2
+    // init ralays
     for (let i = 0; i < chainNumber; i++) {
         // 第一个为 validator
+        // relayNumber: validator = -1, not defined: -2
         relays[i][0] = {
-            relayNumber: -1, // -1: validator
+            relayNumber: -1,
             relayFairInteger: -10,
             b: -10,
             publicKey:
@@ -161,19 +163,57 @@ export const useApplicantStore = defineStore('applicantStore', () => {
     // one dimension array, each element in it represents a relay index
     let relayIndex = reactive<number[]>(Array(chainNumber).fill(0));
 
-    // save token
-    let tokens = reactive<Token[]>([]);
-    for (let i = 0; i < chainNumber; i++) {
-        tokens.push({
-            tokenReceived: '',
-            tokenDecrypted: '',
-            tokenHash: '',
-            verifyResult: false
-        });
+    // set next relay's real name account info
+    async function setNextRelayRealnameInfo(
+        chainIndex: number,
+        nextRelayIndex: number,
+        ni: number,
+        updatePlace: string = 'event listening'
+    ) {
+        // 获取b
+        const loginStore = useLoginStore();
+        const { sendInfo, chainLength } = loginStore;
+        let oneChainSendInfo = sendInfo[chainIndex];
+        // get relay
+        let relay = relays[chainIndex];
+
+        // not update the last two
+        if (nextRelayIndex > chainLength) {
+            console.log('not update the last two, default is validator');
+            return;
+        }
+
+        // check has updated
+        if (relay[nextRelayIndex].publicKey != '') {
+            console.log(
+                `next relay real name account has updated in ${updatePlace === 'event listening' ? 'extension' : 'event listening'}`
+            );
+            return;
+        }
+        console.log(`updating relay real name account in ${updatePlace}`);
+
+        // (n + b) % 99 + 1
+        let b = oneChainSendInfo.b[nextRelayIndex - 1];
+        relay[nextRelayIndex].b = b;
+        relay[nextRelayIndex].relayFairInteger = ni;
+        relay[nextRelayIndex].relayNumber = ((ni + b) % 99) + 1;
+
+        let accountInfo = await getAccountInfo(((ni + b) % 99) + 1);
+        console.log('next relay real account info: ', accountInfo);
+        relay[nextRelayIndex].publicKey = accountInfo.publicKey;
+        relay[nextRelayIndex].realNameAccount = accountInfo.address;
     }
 
     // 重置
     function $reset() {}
 
-    return { datas, resetCurrentStep, relays, relayIndex, tokens, resetTableData, resetRelayInfo };
+    return {
+        datas,
+        resetCurrentStep,
+        relays,
+        relayIndex,
+        resetTableData,
+        resetRelayInfo,
+        setNextRelayRealnameInfo
+    };
 });

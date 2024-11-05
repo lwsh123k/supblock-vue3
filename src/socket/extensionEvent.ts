@@ -1,7 +1,7 @@
 import { defineStore, storeToRefs } from 'pinia';
 import type { Socket } from 'socket.io-client';
 import { getStoreData } from '@/ethers/contract';
-import { getEncryptData } from '@/ethers/util';
+import { ensure0xPrefix, getEncryptData, keccak256 } from '@/ethers/util';
 import { getAccountInfo } from '@/api';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
@@ -10,7 +10,7 @@ import { useLoginStore } from '@/stores/modules/login';
 import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { useRelayStore } from '@/stores/modules/relay';
 import { getPre2NextData } from '@/ethers/chainData/getPre2NextData';
-import { setNextRelayInfo } from '@/views/FairIntegerGen/updateNextRelay';
+import { toRef } from 'vue';
 
 // data type from extensions
 interface NumInfo {
@@ -29,8 +29,8 @@ interface NumInfo {
 export function bindExtension(socket: Socket) {
     // 从applicant store获取relay index
     let applicantStore = useApplicantStore();
-    let { datas } = applicantStore;
-    let { relayIndex } = storeToRefs(applicantStore);
+    let { datas, setNextRelayRealnameInfo } = applicantStore;
+    let relayIndex = toRef(applicantStore, 'relayIndex');
 
     // 从login store获取账号信息, 具体使用哪个账号和next relay发送消息
     const loginStore = useLoginStore();
@@ -59,7 +59,7 @@ export function bindExtension(socket: Socket) {
             let nextRelayIndex = specificRelayIndex + 1;
 
             // 更新存储的信息
-            await setNextRelayInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension');
+            await setNextRelayRealnameInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension');
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
             let data = getApp2RelayData(chainId, nextRelayIndex); // 获得下一轮需要的数据
@@ -79,7 +79,11 @@ export function bindExtension(socket: Socket) {
                 lastUserRelay = true;
                 console.log('last user relay');
             }
-            await writeStoreData.setApp2Relay(relayAddress, encryptedData, lastUserRelay);
+            // get data hash and upload
+            let hashResult = keccak256(JSON.stringify(data));
+            hashResult = ensure0xPrefix(hashResult);
+            await writeStoreData.setApp2Relay(relayAddress, encryptedData, hashResult, lastUserRelay);
+            console.log('app -> next relay 上传完成');
 
             // 进行完随机数选择, 和给下一个relay发送信息, relay index++, 表示当前轮结束
             relayIndex.value[chainId]++;

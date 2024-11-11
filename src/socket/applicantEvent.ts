@@ -2,18 +2,19 @@ import type { Socket } from 'socket.io-client';
 import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { storeToRefs } from 'pinia';
-import { socketMap } from '.';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResDate } from '@/ethers/chainData/chainDataType';
 import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
 import { toRef, toRefs } from 'vue';
 import type { PublicKey, toApplicantSigned } from '@/views/FairIntegerGen/types';
-import eccBlind from '@/views/FairIntegerGen/eccBlind';
+import eccBlind from '@/stores/modules/eccBlind';
 import { useVerifyStore } from '@/stores/modules/verifySig';
+import { useSocketStore } from '@/stores/modules/socket';
 
 //  get signature, applicant -> validator: chain initialization data
 export function appSendInitData(chainIndex: number, appTemp0Address: string) {
     // applicant to validator, using temp 0 account
+    let { socketMap } = useSocketStore();
     let socket0 = socketMap.get(appTemp0Address);
     if (!socket0) throw new Error('socket not found when chain initialize');
     // get data, returned data including chain num
@@ -52,7 +53,7 @@ export function appRecevieValidatorData(socket: Socket) {
         // decrypt and sub all c
         let specificSendInfo = sendInfo[chainId],
             oneChainTempAccountInfo = tempAccountInfo[chainId],
-            tmpToken = token;
+            originalToken = token;
         for (let i = chainLength; i >= 1; i--) {
             // token = await getDecryptData(oneChainTempAccountInfo.selectedAccount[i].key, token);
             token = subHexAndMod(token, specificSendInfo.c[i]);
@@ -62,10 +63,24 @@ export function appRecevieValidatorData(socket: Socket) {
 
         // save verify result
         let calculatedToken = keccak256(token);
-        const tokens = toRef(useVerifyStore(), 'tokens');
+        const { tokens, chain0, chain1, chain2 } = storeToRefs(useVerifyStore());
         let tokenHashReceived = tokens.value[chainId].tokenHash;
-        tokens.value[chainId].tokenReceived = tmpToken;
+        tokens.value[chainId].tokenReceived = originalToken;
         tokens.value[chainId].tokenDecrypted = token;
+        // 保持兼容性, 同时将解密之后的token保存到chain和tokens中
+        switch (chainId) {
+            case 0:
+                chain0.value.t = token;
+                break;
+            case 1:
+                chain1.value.t = token;
+                break;
+            case 2:
+                chain2.value.t = token;
+                break;
+            default:
+                console.error('Invalid chainId:', chainId);
+        }
         tokens.value[chainId].verifyResult = tokenHashReceived === calculatedToken;
         console.log(
             `token(sub all c): ${token}, hash received: ${tokenHashReceived}, hash calculated: ${calculatedToken}`
@@ -95,7 +110,8 @@ export function appGetSignature(socket0: Socket) {
         //console.log(`received pubKey:${publicKey.Px},${publicKey.Py}`)
 
         // 保存R, P, 如果之前没有盲化过信息, 盲化; 否则从保存的取出
-        let { blindedMessage, pointP, pointR } = storeToRefs(verifyStore);
+        let { blindedMessage, pointP, pointR, message } = storeToRefs(verifyStore);
+        message.value = appEndingAccount; // 原始签名信息
         let [R, P] = eccBlind.deconPublicKey(publicKey.Rx, publicKey.Ry, publicKey.Px, publicKey.Py);
         (pointP.value = P), (pointR.value = R);
         let blindedAddress;
@@ -103,8 +119,8 @@ export function appGetSignature(socket0: Socket) {
             blindedAddress = eccBlind.blindMessage(appEndingAccount);
             blindedMessage.value.c = blindedAddress.c;
             blindedMessage.value.cBlinded = blindedAddress.cBlinded;
-            blindedMessage.value.γ = blindedAddress.c;
-            blindedMessage.value.δ = blindedAddress.c;
+            blindedMessage.value.γ = blindedAddress.γ;
+            blindedMessage.value.δ = blindedAddress.δ;
         } else {
             // 从存储中获取
             blindedAddress = {
@@ -129,11 +145,24 @@ export function appGetSignature(socket0: Socket) {
     socket0.on('validator send sig and hash', (data: ValidatorSendBackSig) => {
         let { chainIndex, sBlind, tokenHash: tokenHashArray, point } = data;
         console.log(`app receive sig and hash, token hash array: ${tokenHashArray}, chain number: ${chainIndex}`);
-        eccBlind.deconPublicKey(point.Rx, point.Ry, point.Px, point.Py);
+
+        // save value for verification
+        let { blindedMessage, pointP, pointR, message } = storeToRefs(verifyStore);
+        message.value = appEndingAccount;
+        let [R, P] = eccBlind.deconPublicKey(point.Rx, point.Ry, point.Px, point.Py);
+        (pointP.value = P), (pointR.value = R);
+
+        // 客户端刷新, 服务器端没有刷新, 导致客户端没有blind message的随机数
+        eccBlind.setBlindMessageRandom(verifyStore.γ_string, verifyStore.δ_string); // 定值
+        let blindedAddress = eccBlind.blindMessage(appEndingAccount);
+        blindedMessage.value.c = blindedAddress.c;
+        blindedMessage.value.cBlinded = blindedAddress.cBlinded;
+        blindedMessage.value.γ = blindedAddress.γ;
+        blindedMessage.value.δ = blindedAddress.δ;
+
         verifyStore.writeT(tokenHashArray);
         //console.log(`sBlind:${sBlind},t_hash:${t_hash}`);
-        let blindedMessage = toRef(verifyStore, 'blindedMessage');
-        blindedMessage.value.s = eccBlind.unblindSig(sBlind, blindedMessage.value.γ).s;
+        blindedMessage.value.s = eccBlind.unblindSig(sBlind).s;
 
         // save for later verification(不破坏其他部分)
         const tokens = toRef(verifyStore, 'tokens');
@@ -163,12 +192,19 @@ export function appRecevieRelayData(socket: Socket) {
 
 // app sends blinding number to validator
 // 通过hash标识具体在使用哪条链的哪个节点
-export async function send2Extension(tempAccount: string, relayAccount: string, hash: string, b: number) {
+export async function send2Extension(
+    tempAccount: string,
+    relayAccount: string,
+    hash: string,
+    b: number,
+    chainId: number
+) {
     let loginStore = useLoginStore();
     let { allAccountInfo } = loginStore;
     // it's a helper function, so always using real name account socket to send
+    let { socketMap } = useSocketStore();
     let socket0 = socketMap.get(allAccountInfo.realNameAccount.address);
-    let data = { tempAccount, relayAccount, hash, blindingNumber: b };
+    let data = { tempAccount, relayAccount, hash, blindingNumber: b, chainId };
 
     socket0.emit('blinding number', data);
 }
@@ -181,6 +217,7 @@ export async function appSendFinalData(chainIndex: number) {
     console.log(`using ${appTempAddress} to send final data to validator`);
 
     // applicant to validator, using temp chain length-1 account
+    let { socketMap } = useSocketStore();
     let socket0 = socketMap.get(appTempAddress);
     if (!socket0) throw new Error('socket not found when sending final data');
     // get data, returned data including chain num
@@ -188,7 +225,7 @@ export async function appSendFinalData(chainIndex: number) {
     socket0.emit('applicant to validator: final data', data);
 }
 
-// applicant sends chain confirmation to validator
+// 将反向hash链的第一个值发给validator, 保证app没有更换temp account. applicant sends chain confirmation to validator
 export async function appSendConfirmation(chainIndex: number) {
     // obtain the account corresponding to the validator
     let { tempAccountInfo, chainLength } = useLoginStore();
@@ -196,6 +233,7 @@ export async function appSendConfirmation(chainIndex: number) {
     console.log(`using ${appTempAddress} to send chain confirmation to validator`);
 
     // applicant to validator, using temp chain length-1 account
+    let { socketMap } = useSocketStore();
     let socket0 = socketMap.get(appTempAddress);
     if (!socket0) throw new Error('socket not found when sending chain confirmation');
     // get data, returned data including chain num

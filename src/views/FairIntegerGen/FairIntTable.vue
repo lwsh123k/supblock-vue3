@@ -92,7 +92,6 @@ import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
 import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
 import { getHash, getRandom } from '@/ethers/util';
-import { socketMap } from '@/socket';
 import { appSendInitData, send2Extension } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
@@ -102,8 +101,6 @@ import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, wat
 import type { DataItem, PublicKey, RelayAccount, toApplicantSigned } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
 import { verifyTokenAndReset } from '@/views/FairIntegerGen/verifyTokenAndReset';
-import eccBlind from './eccBlind';
-import { useVerifyStore } from '@/stores/modules/verifySig';
 
 // receive data from parent component
 const props = defineProps<{
@@ -206,7 +203,7 @@ async function uploadHashAndListen() {
 
     // send to server when hash uploads
     let b = oneChainSendInfo.b[currentStep];
-    await send2Extension(addressA, addressB, hash, b);
+    await send2Extension(addressA, addressB, hash, b, chainId);
 
     //上传hash
     console.log('hash: ', hash);

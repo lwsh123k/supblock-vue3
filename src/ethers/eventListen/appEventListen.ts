@@ -37,15 +37,15 @@ export async function listenRelayRes(appTempAccounts: string[]) {
         computedHash = ensure0xPrefix(computedHash);
         let hashResult = computedHash === dataHash;
         // console.log(typeof decodedData);
-        console.log(`relay -> app(relay send temp account): ${decodedData}`);
+        console.log(`relay -> app(relay send temp account). data:`, decodedData);
         console.log(
-            `hash verification result: ${hashResult}, reactived hash: ${dataHash}, computed hash: ${computedHash}`
+            `relay -> app(relay send temp account). hash verification result: ${hashResult}, reactived hash: ${dataHash}, computed hash: ${computedHash}`
         );
 
         // update next relay's anonymous account
         let { from, to, nextRelayAnonymousAccount } = decodedData;
         console.log(
-            `update next relay anonymous account in ethersjs, chain index: ${chainIndex}, next relay index: ${relayIndex + 1}, next relay anonymous account: ${nextRelayAnonymousAccount}`
+            `relay -> app(relay send temp account). update next relay anonymous account in ethersjs, chain index: ${chainIndex}, next relay index: ${relayIndex + 1}, next relay anonymous account: ${nextRelayAnonymousAccount}`
         );
         relays[chainIndex][relayIndex + 1].anonymousAccount = nextRelayAnonymousAccount;
     });

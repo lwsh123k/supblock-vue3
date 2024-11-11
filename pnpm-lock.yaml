@@ -38,6 +38,9 @@ dependencies:
   ethers:
     specifier: ^5.7.2
     version: 5.7.2
+  js-sha3:
+    specifier: ^0.9.3
+    version: 0.9.3
   keccak:
     specifier: ^3.0.4
     version: 3.0.4
@@ -2551,6 +2554,10 @@ packages:
 
   /js-sha3@0.8.0:
     resolution: {integrity: sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==}
+
+  /js-sha3@0.9.3:
+    resolution: {integrity: sha512-BcJPCQeLg6WjEx3FE591wVAevlli8lxsxm9/FzV4HXkV49TmBH38Yvrpce6fjbADGMKFrBMGTqrVz3qPIZ88Gg==}
+    dev: false
 
   /js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}

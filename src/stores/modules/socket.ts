@@ -10,4 +10,8 @@ import { useLoginStore } from './login';
 import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 
-export const useSocketStore = defineStore('socket', () => {});
+export const useSocketStore = defineStore('socketStore', () => {
+    const socketMap = new Map();
+
+    return { socketMap };
+});

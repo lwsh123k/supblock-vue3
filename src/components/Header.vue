@@ -99,7 +99,7 @@ function handleFileChange(event: Event) {
                 // 更改网页title
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // relay listens hash, pre relay info, pre app info
-                backendListen();
+                await backendListen();
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();
             } catch (e) {

@@ -1,16 +1,17 @@
-import { socketMap } from '@/socket';
 import { useLoginStore } from '@/stores/modules/login';
 import { relayReceivedData, type RelayResDate } from './chainDataType';
 import { getStoreData } from '../contract';
 import { provider } from '../provider';
 import { Wallet } from 'ethers';
 import { ensure0xPrefix, getEncryptData, keccak256 } from '../util';
+import { useSocketStore } from '@/stores/modules/socket';
 
 // next relay通过socket使用匿名账户回复pre applicant temp address
 export async function sendNextRelay2AppData(preApplicantTempAccount: string, dataHash: string) {
     const { allAccountInfo } = useLoginStore();
     let { key: privateKey, address: realNameAddress } = allAccountInfo.realNameAccount;
     let anonymousAddress = allAccountInfo.anonymousAccount.address;
+    let { socketMap } = useSocketStore();
     let realNameSocket = socketMap.get(realNameAddress);
     let receivedData = relayReceivedData.get(preApplicantTempAccount);
     let chainIndex = receivedData?.appToRelayData?.chainIndex as number,
@@ -41,7 +42,8 @@ export async function sendNextRelay2AppData(preApplicantTempAccount: string, dat
     evidenceHash = ensure0xPrefix(evidenceHash);
     await writeStoreData.setTempAccountHash(preApplicantTempAccount, encryptedData, evidenceHash, chainIndex);
     console.log(
-        `relay -> app: using ethersjs send to ${preApplicantTempAccount}, chain index: ${chainIndex}, data: ${data}`
+        `relay -> app: using ethersjs send to ${preApplicantTempAccount}, chain index: ${chainIndex}, data:`,
+        data
     );
 }
 

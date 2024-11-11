@@ -83,7 +83,13 @@ export function bindExtension(socket: Socket) {
             let hashResult = keccak256(JSON.stringify(data));
             hashResult = ensure0xPrefix(hashResult);
             await writeStoreData.setApp2Relay(relayAddress, encryptedData, hashResult, lastUserRelay);
-            console.log('app -> next relay 上传完成');
+            console.log('app -> next relay 数据上链完成');
+            console.log(
+                `app -> next relay data: app temp account: ${addressA}, relay address: ${relayAddress}, data:`,
+                data,
+                'hash result:',
+                hashResult
+            );
 
             // 进行完随机数选择, 和给下一个relay发送信息, relay index++, 表示当前轮结束
             relayIndex.value[chainId]++;
@@ -113,6 +119,11 @@ export function bindExtension(socket: Socket) {
             let readOnlyStoreData = await getStoreData();
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             await writeStoreData.setPre2Next(relayAddress, encryptedData);
+            console.log('pre relay -> next relay 数据上链完成');
+            console.dir(
+                `pre relay -> next relay data: pre relay account: ${relayPubkey}, next relay address: ${relayAddress}, data:`,
+                data
+            );
         } catch (error) {
             console.log(error);
         }

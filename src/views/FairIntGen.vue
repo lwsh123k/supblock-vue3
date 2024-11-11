@@ -34,10 +34,13 @@
                     <br />
                     <div class="flex items-center">
                         <button
-                            class="input-spacing w-5 rounded bg-sky-500 px-4 py-2 text-lg font-bold text-white hover:bg-blue-600 md:w-auto">
+                            class="input-spacing w-5 rounded bg-sky-500 px-4 py-2 text-lg font-bold text-white hover:bg-blue-600 md:w-auto"
+                            @click="verifySigFunc">
                             verify sig
                         </button>
-                        <p class="input-spacing ml-4 text-xl font-bold">verification result:</p>
+                        <p class="input-spacing ml-4 text-xl font-bold">
+                            verification result: {{ verifyResultMessage }}
+                        </p>
                     </div>
                 </div>
             </el-collapse-item>
@@ -46,16 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { getAccountInfo } from '@/api';
-import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
-import { provider } from '@/ethers/provider';
-import { listenResHash, stopableListenResNum, stopableListenResReupload } from '@/ethers/timedListen';
-import { getHash, getRandom } from '@/ethers/util';
-import { socketMap } from '@/socket';
-import { appSendInitData } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
-import { ethers, Wallet } from 'ethers';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import FairIntTable from './FairIntegerGen/FairIntTable.vue';
@@ -68,11 +63,23 @@ const { resetCurrentStep } = applicantStore;
 let { relayIndex } = storeToRefs(applicantStore);
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount, sendInfo, allAccountInfo, tempAccountInfo } = loginStore;
-const totalStep = chainLength + 3;
 
 const verifySig = useVerifyStore();
 // 折叠面板
 const activeNames = ref(['1']);
+
+// 签名验证
+let hasVerify = false,
+    verifyResult = false;
+function verifySigFunc() {
+    let res = verifySig.verifySigFunc();
+    hasVerify = true;
+    verifyResult = res;
+}
+// 展示验证结果
+const verifyResultMessage = computed(() => {
+    return hasVerify === true ? verifyResult : '';
+});
 </script>
 
 <style scoped>

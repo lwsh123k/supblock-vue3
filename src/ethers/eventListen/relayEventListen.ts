@@ -31,7 +31,12 @@ export async function backendListen() {
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
-        console.log('app -> relay: hash upload, ', from, to, infoHash, tA, tB, uploadTime, index);
+        // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
+        console.log(
+            `app -> relay: hash upload data:`,
+            `from: ${from}, to: ${to}, infoHash: ${infoHash}, tA: ${tA.toNumber()}, tB: ${tB.toNumber()}, uploadTime: ${uploadTime.toString()}, index: ${index.toString()}`
+        );
+
         dataFromApplicant.push({
             role: 'applicant',
             from: from,

@@ -4,6 +4,7 @@ import { provider } from './provider';
 import EthCrypto, { cipher } from 'eth-crypto';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
+import { keccak256 as keccak256Hash } from 'js-sha3';
 
 // 计算hash, 使用keccak256, 保证数据类型与solidity中的数据类型一致
 export function getHash(ni: number, ta: number, tb: number, ri: string) {
@@ -70,6 +71,13 @@ export async function getDecryptData(privateKey: string, encryptedData: string) 
 
 // 对任意个数的参数取hash
 export function keccak256(...args: string[]) {
+    const hash = keccak256Hash.create();
+    for (let arg of args) hash.update(arg.toString());
+    const result = hash.hex();
+    return result;
+}
+
+export function sha256Hash(...args: string[]) {
     const hash = sha256.create();
     for (let arg of args) hash.update(arg.toString());
     const result = toHex(hash.digest());
@@ -112,7 +120,8 @@ export function addHexAndMod(hex1: string, hex2: string) {
     const result = (num1 + num2) % mod;
 
     // 将结果转换回64位16进制字符串
-    return result.toString(16).padStart(64, '0');
+    // return result.toString(16).padStart(64, '0');
+    return result.toString(16);
 }
 
 export function subHexAndMod(hex1: string, hex2: string) {

@@ -73,9 +73,9 @@ let option = ref({
     ]
 });
 
-// 获取gas相关数据
+// 分析chain0, 获取gas相关数据
 let applicantStore = useApplicantStore();
-let datas = applicantStore.datas;
+let datas = applicantStore.datas[0];
 interface Account {
     addressA: string;
     hashA: string;

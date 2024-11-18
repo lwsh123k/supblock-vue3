@@ -5,6 +5,7 @@
         <router-link to="/bridge" id="bridge-id" class="nav-link">Bridge</router-link>
         <router-link to="/transfer" class="nav-link">Transfer</router-link>
         <router-link to="/stats" class="nav-link">Stats</router-link>
+        <router-link to="/relayInfo" class="nav-link">RelayInfo</router-link>
 
         <div class="upload">
             <!-- 文件上传按钮 -->

@@ -111,8 +111,12 @@ export function bindExtension(socket: Socket) {
             let data = await getPre2NextData(applicantAddress, preRelayAnonymousAccount, relayAddress, relayPubkey);
             // use fake data
             let relayStore = useRelayStore();
-            let { useFakeData } = relayStore;
-            if (useFakeData) data.t = '3333333333333333333333333333333333333333333333333333333333334455';
+            let useFakeData = toRef(relayStore, 'useFakeData');
+            if (useFakeData.value === true) {
+                data.t = '3333333333333333333333333333333333333333333333333333333333334455';
+                // only use fake data once
+                useFakeData.value = false;
+            }
             let encryptedData = await getEncryptData(relayPubkey, data);
 
             // 当前relay使用anonymous account

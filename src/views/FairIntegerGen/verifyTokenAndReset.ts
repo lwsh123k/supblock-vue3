@@ -13,6 +13,7 @@ import { toRef } from 'vue';
 export async function verifyTokenAndReset(chainId: number) {
     const tokens = toRef(useVerifyStore(), 'tokens');
     let { chainLength } = useLoginStore();
+    let { relays } = useApplicantStore();
     if (tokens.value[chainId].verifyResult === true) {
         console.log(`chain ${chainId}: token is correct`);
         ElMessage({
@@ -26,6 +27,7 @@ export async function verifyTokenAndReset(chainId: number) {
         let wrongData = [];
         for (let i = 0; i <= chainLength + 2; i++) {
             let PA = getApp2RelayData(chainId, i);
+            PA.to = relays[chainId][i].realNameAccount;
             let PAReceive = getApp2ReceivedData(chainId, i);
             wrongData.push({ PA, PAReceive });
         }
@@ -40,6 +42,8 @@ export async function verifyTokenAndReset(chainId: number) {
             func1(chainId); // table data
             func2(chainId); // relay info
             relayIndex.value[chainId] = 0; // Currently interacting relay
+            // clear saved token and hash
+            // not need...
             ElMessage({
                 message: 'Token is incorrect. Data will be reset.',
                 type: 'error',

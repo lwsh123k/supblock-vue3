@@ -35,7 +35,7 @@
                         <input type="text" v-if="scope.row.role === 'appliacnt'" v-model="scope.row.randomText" />
                     </template>
                 </el-table-column>
-                <el-table-column prop="executionTime" label="execution time" placeholder=""></el-table-column>
+                <el-table-column prop="executionTime" label="execution round" placeholder=""></el-table-column>
                 <el-table-column prop="r" label="r">
                     <template #default="scope">
                         {{ processLongString(scope.row.r) }}

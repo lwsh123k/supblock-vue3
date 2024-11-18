@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+
+<body>
+    <canvas id="flowChart" width="1300" height="400" style="border:1px solid #000;">
+    </canvas>
+    <div style="margin-top: 10px;">
+        <button onclick="changeColor('red')">Red</button>
+        <button onclick="changeColor('green')">Green</button>
+        <button onclick="changeColor('blue')">Blue</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('flowChart');
+        const ctx = canvas.getContext('2d');
+
+        // 计算整体宽度和需要的偏移量
+        const calculateOffset = () => {
+            let minX = Infinity;
+            let maxX = -Infinity;
+
+            // 计算所有方块占用的最小和最大 X 坐标
+            blocks.forEach(block => {
+                minX = Math.min(minX, block.x);
+                maxX = Math.max(maxX, block.x + block.w);
+            });
+
+            const totalWidth = maxX - minX;
+            const offsetX = (canvas.width - totalWidth) / 2 - minX;
+
+            return offsetX;
+        };
+        let blocks = [
+            { id: 1, x: 50, y: 150, w: 120, h: 50, text: 'real name account', color: 'red' },
+            { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'blue' },
+            { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green' },
+            { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red' },
+            { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'blue' },
+            { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green' },
+            { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red' },
+            { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'blue' },
+            { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green' },
+            { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red' },
+            { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'green' },
+            { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'blue' }
+        ];
+        const offsetX = calculateOffset();
+        blocks = blocks.map(block => ({
+            ...block,
+            x: block.x + offsetX
+        }));
+        let arrows = [
+            { fromId: 1, toId: 2 }, { fromId: 1, toId: 3 }, { fromId: 1, toId: 4 },
+            { fromId: 2, toId: 5 }, { fromId: 3, toId: 6 }, { fromId: 4, toId: 7 },
+            { fromId: 5, toId: 8 }, { fromId: 6, toId: 9 }, { fromId: 7, toId: 10 },
+            { fromId: 8, toId: 11 }, { fromId: 9, toId: 11 }, { fromId: 10, toId: 11 }
+        ];
+
+        let bidirectionalArrows = [{ fromId: 11, toId: 12 }];
+
+        let selectedBlock = null;
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        function drawArrowhead(x, y, angle) {
+            const headLength = 15;
+            const headWidth = 5;
+
+            ctx.fillStyle = 'black'; // 设置箭头颜色
+            ctx.beginPath();
+            // 计算箭头三角形的三个顶点
+            ctx.moveTo(
+                x - headLength * Math.cos(angle) - headWidth * Math.sin(angle), // 左侧
+                y - headLength * Math.sin(angle) + headWidth * Math.cos(angle)  // 左侧
+            );
+            ctx.lineTo(x, y); // 中心点
+            ctx.lineTo(
+                x - headLength * Math.cos(angle) + headWidth * Math.sin(angle), // 右侧
+                y - headLength * Math.sin(angle) - headWidth * Math.cos(angle)  // 右侧
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawConnection(fromX, fromY, toX, toY) {
+            const midX = (fromX + toX) / 2;
+            const midY = (fromY + toY) / 2;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            // 先绘制线段
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+
+            // Draw arrowhead at midpoint
+            drawArrowhead(toX, toY, angle);
+        }
+
+        function drawBidirectionalArrow(fromX, fromY, toX, toY) {
+            const spacing = 5;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+            const offsetX = spacing * Math.sin(angle);
+            const offsetY = -spacing * Math.cos(angle);
+
+            // Draw first line with arrow
+            ctx.beginPath();
+            drawConnection(fromX + offsetX, fromY + offsetY, toX + offsetX, toY + offsetY);
+
+            // Draw second line with arrow
+            ctx.beginPath();
+            drawConnection(toX - offsetX, toY - offsetY, fromX - offsetX, fromY - offsetY);
+        }
+
+        function findIntersectionPoint(fromX, fromY, toX, toY, targetBlock) {
+            // 计算线段角度
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            // 目标块的中心点
+            const centerX = targetBlock.x + targetBlock.w / 2;
+            const centerY = targetBlock.y + targetBlock.h / 2;
+
+            // 计算交点
+            let intersectX, intersectY;
+
+            // 判断从哪个边进入
+            if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
+                // 主要是水平移动
+                intersectX = (Math.cos(angle) > 0) ? targetBlock.x : targetBlock.x + targetBlock.w;
+                intersectY = fromY + (intersectX - fromX) * Math.tan(angle);
+            } else {
+                // 主要是垂直移动
+                intersectY = (Math.sin(angle) > 0) ? targetBlock.y : targetBlock.y + targetBlock.h;
+                intersectX = fromX + (intersectY - fromY) / Math.tan(angle);
+            }
+
+            return { x: intersectX, y: intersectY };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000';
+            ctx.fillStyle = '#000';
+
+
+            // Draw connections
+            arrows.forEach(({ fromId, toId }) => {
+                const from = blocks.find(b => b.id === fromId);
+                const to = blocks.find(b => b.id === toId);
+
+                // 计算起点（从起始块的中心）
+                const startX = from.x + from.w / 2;
+                const startY = from.y + from.h / 2;
+
+                // 计算终点（目标块的相交点）
+                const intersection = findIntersectionPoint(
+                    startX, startY,
+                    to.x + to.w / 2, to.y + to.h / 2,
+                    to
+                );
+
+                drawConnection(startX, startY, intersection.x, intersection.y);
+            });
+
+            // Draw bidirectional arrows
+            bidirectionalArrows.forEach(({ fromId, toId }) => {
+                const from = blocks.find(b => b.id === fromId);
+                const to = blocks.find(b => b.id === toId);
+                drawBidirectionalArrow(from, to, 10);
+            });
+
+            function drawBidirectionalArrow(fromBlock, toBlock, offset) {
+                const startX = fromBlock.x + fromBlock.w / 2;
+                const startY = fromBlock.y + fromBlock.h / 2;
+                const endX = toBlock.x + toBlock.w / 2;
+                const endY = toBlock.y + toBlock.h / 2;
+
+                // 计算角度
+                const angle = Math.atan2(endY - startY, endX - startX);
+
+                // 计算偏移后的起点和终点
+                const offsetStartX1 = startX + offset * Math.sin(angle);
+                const offsetStartY1 = startY - offset * Math.cos(angle);
+                const offsetEndX1 = endX + offset * Math.sin(angle);
+                const offsetEndY1 = endY - offset * Math.cos(angle);
+
+                const offsetStartX2 = startX - offset * Math.sin(angle);
+                const offsetStartY2 = startY + offset * Math.cos(angle);
+                const offsetEndX2 = endX - offset * Math.sin(angle);
+                const offsetEndY2 = endY + offset * Math.cos(angle);
+
+                // 计算与方块的交点
+                const start1 = findIntersectionPoint(offsetEndX1, offsetEndY1, offsetStartX1, offsetStartY1, fromBlock);
+                const end1 = findIntersectionPoint(offsetStartX1, offsetStartY1, offsetEndX1, offsetEndY1, toBlock);
+
+                const start2 = findIntersectionPoint(offsetEndX2, offsetEndY2, offsetStartX2, offsetStartY2, fromBlock);
+                const end2 = findIntersectionPoint(offsetStartX2, offsetStartY2, offsetEndX2, offsetEndY2, toBlock);
+
+                // 绘制两条带箭头的线
+                drawConnection(start1.x, start1.y, end1.x, end1.y);
+                drawConnection(end2.x, end2.y, start2.x, start2.y,);
+            }
+
+            // Draw blocks
+            const colorMap = {
+                'red': '#FFB3B3',    // 浅红色
+                'blue': '#FFD6B3',   // 浅橙色（替换蓝色）
+                'green': '#B3FFB3'   // 浅绿色
+            };
+            blocks.forEach(block => {
+                ctx.fillStyle = colorMap[block.color];
+                ctx.fillRect(block.x, block.y, block.w, block.h);
+                ctx.strokeStyle = 'black';
+                ctx.strokeRect(block.x, block.y, block.w, block.h);
+
+                ctx.fillStyle = 'black';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(block.text, block.x + block.w / 2, block.y + block.h / 2);
+            });
+
+            // 绘制图例
+            drawLegend();
+        }
+
+        function drawLegend() {
+            const legendY = 355;  // 图例的Y坐标
+            const itemWidth = 230;  // 每个图例项的宽度
+            const itemHeight = 20;  // 图例框的高度
+            const colorMap = {
+                'red': '#FFB3B3',    // 浅红色
+                'blue': '#FFD6B3',   // 浅橙色（替换蓝色）
+                'green': '#B3FFB3'   // 浅绿色
+            };
+
+            // 计算图例总宽度，确保居中显示
+            const totalWidth = itemWidth * 3 + 40;  // 3个图例项加间距
+            const startX = (canvas.width - totalWidth) / 2;
+
+            // 绘制每个图例项
+            const legends = [
+                { color: 'red', text: 'Verified User' },
+                { color: 'green', text: 'Anonymous User' },
+                { color: 'blue', text: 'Validator' }
+            ];
+
+            legends.forEach((legend, index) => {
+                const x = startX + (itemWidth + 20) * index;
+
+                // 绘制颜色框
+                ctx.fillStyle = colorMap[legend.color];
+                ctx.fillRect(x, legendY, 30, itemHeight);
+                ctx.strokeStyle = '#999999';
+                ctx.strokeRect(x, legendY, 30, itemHeight);
+
+                // 绘制文本
+                ctx.fillStyle = '#333333';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(legend.text, x + 40, legendY + itemHeight / 2);
+            });
+        }
+        // 计算两点之间的角度
+        function getAngle(x1, y1, x2, y2) {
+            return Math.atan2(y2 - y1, x2 - x1);
+        }
+
+        // 计算矩形的对角线长度
+        function getDiagonalLength(width, height) {
+            return Math.sqrt(width * width + height * height) / 2;
+        }
+
+        // 计算给定角度和距离的点
+        function getPointFromAngle(x, y, angle, distance) {
+            return {
+                x: x + Math.cos(angle) * distance,
+                y: y + Math.sin(angle) * distance
+            };
+        }
+
+        function changeColor(color) {
+            if (selectedBlock) {
+                selectedBlock.color = color;
+                draw();
+            }
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            selectedBlock = blocks.find(block =>
+                x >= block.x && x <= block.x + block.w &&
+                y >= block.y && y <= block.y + block.h
+            );
+
+            if (selectedBlock) {
+                isDragging = true;
+                dragOffsetX = x - selectedBlock.x;
+                dragOffsetY = y - selectedBlock.y;
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging && selectedBlock) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+
+                selectedBlock.x = x - dragOffsetX;
+                selectedBlock.y = y - dragOffsetY;
+
+                draw();
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        canvas.addEventListener('dblclick', (e) => {
+            if (selectedBlock) {
+                const text = prompt('Enter text:', selectedBlock.text);
+                if (text !== null) {
+                    selectedBlock.text = text;
+                    draw();
+                }
+            }
+        });
+
+        draw();
+    </script>
+</body>
+
+</html>

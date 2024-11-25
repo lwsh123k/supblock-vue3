@@ -1,6 +1,6 @@
 import { useLoginStore } from '@/stores/modules/login';
 import { getFairIntGen, getStoreData } from '../contract';
-import { Wallet } from 'ethers';
+import { BigNumber, Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
 import { ensure0xPrefix, getDecryptData, keccak256, verifyHashBackward, verifyHashForward } from '../util';
 import { sendNextRelay2AppData } from '../chainData/getRelayResData';
@@ -15,6 +15,8 @@ import { relaySendFinalData } from '@/socket/relayEvent';
 import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
 import { triggerEvents } from './autoUpload';
 import { toRef } from 'vue';
+import type { BigIntOptions } from 'fs';
+import { provider } from '../provider';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen() {
@@ -27,7 +29,6 @@ export async function backendListen() {
     // relay listening: hash upload, using anonymous account
     let { address: anonymousAddress } = allAccountInfo.anonymousAccount;
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
-    const activeStep = toRef(relayStore, 'activeStep');
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
@@ -74,43 +75,76 @@ export async function backendListen() {
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
+    // 监听未来的event
     storeData.on(app2Relayfilter, async (from, relay, data, dataHash, dataIndex, lastRelay) => {
-        console.log('监听到app to next relay消息');
-
-        // decode and save. 解码的数据中包含applicant下次要用的账号
-        let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
-        // 验证接收到的数据和hash一致
-        let computedHash = keccak256(JSON.stringify(decodedData));
-        computedHash = ensure0xPrefix(computedHash);
-        let hashVerifyResult = computedHash === dataHash;
-        if (!hashVerifyResult) {
-            console.log(`hash verification not pass, reactived hash: ${dataHash}, computed hash: ${computedHash}`);
-            return;
-        }
-        console.log(`app -> relay: ${decodedData}`);
-
-        // verify data and send back
-        // next relay通过socket使用匿名账户回复applicant
-        // decodedData.lastUserRelay = lastRelay;
-        let preAppTempAccount = from; // 对应关系
-        await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData, dataHash);
+        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay);
     });
 
     // next relay listening: current relay -> next relay, using real name account
     let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, realNameAddress);
-    storeData.on(pre2Nextfilter, async (form, relay, data, dataIndex) => {
-        console.log('监听到pre relay to next relay消息, data: ');
-        // 收到的数据中包含pre applicant temp account
-        let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
-        let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
-        console.log(decodedData);
-
-        // verify and send back
-        if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
-        await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
+    // 监听未来的event
+    storeData.on(pre2Nextfilter, async (from, relay, data, dataIndex) => {
+        await processPre2NextEvent(from, relay, data, dataIndex);
     });
+
+    // 当前block向前10个, 避免错过
+    const currentBlockNumber = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlockNumber - 10); // Ensure fromBlock is not negative
+    const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber);
+    // console.log(pastEvents1);
+    // app to relay past event
+    for (const event of pastEvents1) {
+        const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
+        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay);
+    }
+    // pre relay to next relay past event
+    const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
+    for (const event of pastEvents2) {
+        const { from, relay, data, dataIndex } = event.args;
+        await processPre2NextEvent(from, relay, data, dataIndex);
+    }
 }
 
+async function processApp2RelayEvent(
+    from: string,
+    relay: string,
+    data: string,
+    dataHash: string,
+    dataIndex: BigNumber,
+    lastRelay: boolean
+) {
+    const { allAccountInfo } = useLoginStore();
+    // decode and save. 解码的数据中包含applicant下次要用的账号
+    let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
+    // 验证接收到的数据和hash一致
+    let computedHash = keccak256(JSON.stringify(decodedData));
+    computedHash = ensure0xPrefix(computedHash);
+    let hashVerifyResult = computedHash === dataHash;
+    if (!hashVerifyResult) {
+        console.log(`hash verification not pass, reactived hash: ${dataHash}, computed hash: ${computedHash}`);
+        return;
+    }
+    console.log(`app -> relay: ${decodedData}`);
+
+    // verify data and send back
+    // next relay通过socket使用匿名账户回复applicant
+    // decodedData.lastUserRelay = lastRelay;
+    let preAppTempAccount = from; // 对应关系
+    await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData, dataHash);
+}
+
+async function processPre2NextEvent(from: string, relay: string, data: string, dataIndex: BigNumber) {
+    console.log('监听到pre relay to next relay消息, data: ');
+    const { allAccountInfo } = useLoginStore();
+    // 收到的数据中包含pre applicant temp account
+    let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
+    let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
+    console.log(decodedData);
+
+    // verify and send back
+    if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
+    await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
+}
 async function checkPreDataAndRes(
     preAppTempAccount: string,
     from: string,
@@ -120,9 +154,14 @@ async function checkPreDataAndRes(
     const { chainLength } = useLoginStore();
     let savedData = relayReceivedData.get(preAppTempAccount);
 
-    // 一开始就没有数据 or overwrite previous data
-    if (savedData === undefined || (savedData.appToRelayData && savedData.preToNextRelayData)) {
+    // 一开始就没有数据 or overwrite previous data???
+    if (savedData === undefined) {
         savedData = {};
+    }
+    // 避免重复打开
+    if (savedData.appToRelayData && savedData.preToNextRelayData) {
+        console.log('saved data has existed');
+        return;
     }
 
     // 判断是谁调用

@@ -116,7 +116,7 @@ function verifySig(m: string, c: string, s: string, t: string): { result: boolea
 }
 
 export default {
-    n,
+    n: ecparams!.n,
     deconPublicKey,
     blindMessage,
     setBlindMessageRandom,

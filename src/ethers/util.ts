@@ -149,3 +149,26 @@ export function ensure0xPrefix(str: string) {
     }
     return `0x${value}`;
 }
+
+// 格式化以太坊地址, 显示0x前缀和前后3位字符
+export function formatAddress(address: string) {
+    if (!address || typeof address !== 'string' || !address.startsWith('0x')) {
+        return 'Invalid Address';
+    }
+
+    const addressWithoutPrefix = address.slice(2);
+    if (addressWithoutPrefix.length <= 6) {
+        return address;
+    }
+
+    // 获取前3位和后3位
+    const prefix = addressWithoutPrefix.slice(0, 3);
+    const suffix = addressWithoutPrefix.slice(-3);
+
+    // 组合并返回格式化后的地址
+    return `0x${prefix}...${suffix}`;
+}
+
+export function padTo64(hexStr: string): string {
+    return hexStr.padStart(64, '0');
+}

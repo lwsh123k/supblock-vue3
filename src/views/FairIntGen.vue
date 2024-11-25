@@ -25,12 +25,12 @@
                 <!-- <div>verify sig</div> -->
                 <!-- 单纯验证签名 -->
                 <div id="verifySig">
-                    <el-input v-model="verifySig.blindedMessage.c" class="input-spacing" placeholder="c值" />
-                    <el-input v-model="verifySig.blindedMessage.s" class="input-spacing" placeholder="s值" />
+                    <el-input v-model="blindedMessage.c" class="input-spacing" placeholder="c值" />
+                    <el-input v-model="blindedMessage.s" class="input-spacing" placeholder="s值" />
                     <br />
-                    <el-input v-model="verifySig.chain0.t" class="input-spacing" placeholder="t1值" />
-                    <el-input v-model="verifySig.chain1.t" class="input-spacing" placeholder="t2值" />
-                    <el-input v-model="verifySig.chain2.t" class="input-spacing" placeholder="t3值" />
+                    <el-input v-model="chain0.t" class="input-spacing" placeholder="t1值" />
+                    <el-input v-model="chain1.t" class="input-spacing" placeholder="t2值" />
+                    <el-input v-model="chain2.t" class="input-spacing" placeholder="t3值" />
                     <br />
                     <div class="flex items-center">
                         <button
@@ -59,12 +59,11 @@ import { useVerifyStore } from '@/stores/modules/verifySig';
 let applicantStore = useApplicantStore();
 let datas = applicantStore.datas;
 let relays = applicantStore.relays;
-const { resetCurrentStep } = applicantStore;
-let { relayIndex } = storeToRefs(applicantStore);
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount, sendInfo, allAccountInfo, tempAccountInfo } = loginStore;
 
-const verifySig = useVerifyStore();
+const verifySigStore = useVerifyStore();
+const { blindedMessage, chain0, chain1, chain2 } = storeToRefs(verifySigStore);
 // 折叠面板
 const activeNames = ref(['1']);
 
@@ -72,7 +71,7 @@ const activeNames = ref(['1']);
 let hasVerify = false,
     verifyResult = false;
 function verifySigFunc() {
-    let res = verifySig.verifySigFunc();
+    let res = verifySigStore.verifySigFunc();
     hasVerify = true;
     verifyResult = res;
 }

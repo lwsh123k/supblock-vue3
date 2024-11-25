@@ -203,7 +203,7 @@ async function uploadHashAndListen() {
 
     // send to server when hash uploads
     let b = oneChainSendInfo.b[currentStep];
-    await send2Extension(addressA, addressB, hash, b, chainId);
+    await send2Extension(addressA, addressB, hash, b, chainId, step);
 
     //上传hash
     console.log('hash: ', hash);

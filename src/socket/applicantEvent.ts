@@ -143,7 +143,7 @@ export function appGetSignature(socket0: Socket) {
 
     // receive blinded signature and hash of token t
     socket0.on('validator send sig and hash', (data: ValidatorSendBackSig) => {
-        let { chainIndex, sBlind, tokenHash: tokenHashArray, point } = data;
+        let { chainIndex, sBlind, tokenHash: tokenHashArray, point, realToken } = data;
         console.log(`app receive sig and hash, token hash array: ${tokenHashArray}, chain number: ${chainIndex}`);
 
         // save value for verification
@@ -160,16 +160,21 @@ export function appGetSignature(socket0: Socket) {
         blindedMessage.value.γ = blindedAddress.γ;
         blindedMessage.value.δ = blindedAddress.δ;
 
-        verifyStore.writeT(tokenHashArray);
+        verifyStore.writeTHash(tokenHashArray);
         //console.log(`sBlind:${sBlind},t_hash:${t_hash}`);
         blindedMessage.value.s = eccBlind.unblindSig(sBlind).s;
 
         // save for later verification(不破坏其他部分)
-        const tokens = toRef(verifyStore, 'tokens');
+        const { tokens, chain0, chain1, chain2 } = storeToRefs(useVerifyStore());
         tokens.value[0].tokenHash = tokenHashArray[0];
         tokens.value[1].tokenHash = tokenHashArray[1];
         tokens.value[2].tokenHash = tokenHashArray[2];
         console.log(`chain initialization complete`);
+
+        // 测试使用
+        chain0.value.t = realToken![0];
+        chain1.value.t = realToken![1];
+        chain2.value.t = realToken![2];
     });
 }
 
@@ -197,14 +202,15 @@ export async function send2Extension(
     relayAccount: string,
     hash: string,
     b: number,
-    chainId: number
+    chainId: number,
+    relayId: number
 ) {
     let loginStore = useLoginStore();
     let { allAccountInfo } = loginStore;
     // it's a helper function, so always using real name account socket to send
     let { socketMap } = useSocketStore();
     let socket0 = socketMap.get(allAccountInfo.realNameAccount.address);
-    let data = { tempAccount, relayAccount, hash, blindingNumber: b, chainId };
+    let data = { tempAccount, relayAccount, hash, blindingNumber: b, chainId, relayId };
 
     socket0.emit('blinding number', data);
 }
@@ -249,6 +255,7 @@ type ValidatorSendBackSig = {
     sBlind: string;
     tokenHash: [string, string, string];
     point: EccPoint;
+    realToken?: [string, string, string];
 };
 
 export type EccPoint = {

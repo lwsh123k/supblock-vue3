@@ -13,13 +13,15 @@
         <div class="mt-2">
             <button @click="changeColor('red')" class="mr-2">Red</button>
             <button @click="changeColor('green')" class="mr-2">Green</button>
-            <button @click="changeColor('blue')">Blue</button>
+            <button @click="changeColor('yellow')">yellow</button>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { formatAddress } from '@/ethers/util';
+import { io, type Socket } from 'socket.io-client';
+import { ref, onMounted, type Ref, onUnmounted } from 'vue';
 
 // 接口定义
 interface Block {
@@ -30,6 +32,9 @@ interface Block {
     h: number;
     text: string;
     color: ColorType;
+    chainId?: number;
+    relayId?: number;
+    blindedFairInteger?: number;
 }
 
 interface Arrow {
@@ -48,7 +53,7 @@ interface Legend {
 }
 
 // 类型定义
-type ColorType = 'red' | 'blue' | 'green';
+type ColorType = 'red' | 'yellow' | 'green' | 'grey';
 type ColorMapType = Record<ColorType, string>;
 
 // ref 类型定义
@@ -60,18 +65,18 @@ const dragOffsetX = ref<number>(0);
 const dragOffsetY = ref<number>(0);
 
 const blocks = ref<Block[]>([
-    { id: 1, x: 50, y: 150, w: 120, h: 50, text: 'real name account', color: 'red' },
-    { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'blue' },
-    { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green' },
-    { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red' },
-    { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'blue' },
-    { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green' },
-    { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red' },
-    { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'blue' },
-    { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green' },
-    { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red' },
-    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'green' },
-    { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'blue' }
+    { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'grey' },
+    { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
+    { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
+    { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
+    { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
+    { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
+    { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
+    { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
+    { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
+    { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
+    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' },
+    { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'grey' }
 ]);
 
 const arrows = ref<Arrow[]>([
@@ -93,8 +98,9 @@ const bidirectionalArrows = ref<Arrow[]>([{ fromId: 11, toId: 12 }]);
 
 const colorMap: ColorMapType = {
     red: '#FFB3B3',
-    blue: '#FFD6B3',
-    green: '#B3FFB3'
+    yellow: '#FFD6B3',
+    green: '#B3FFB3',
+    grey: '#c7c2b3'
 };
 
 // 内容居中显示
@@ -210,7 +216,7 @@ const drawLegend = (): void => {
     const legends: Legend[] = [
         { color: 'red', text: 'Verified User' },
         { color: 'green', text: 'Anonymous User' },
-        { color: 'blue', text: 'Validator' }
+        { color: 'yellow', text: 'Validator' }
     ];
 
     legends.forEach((legend, index) => {
@@ -242,11 +248,13 @@ const draw = (): void => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
 
+        // from和to text不为空
+        if (from.text === '' || to.text === '') return;
+
         const startX = from.x + from.w / 2;
         const startY = from.y + from.h / 2;
-
+        // 计算arrow和block的交叉点
         const intersection = findIntersectionPoint(startX, startY, to.x + to.w / 2, to.y + to.h / 2, to);
-
         drawConnection(startX, startY, intersection.x, intersection.y);
     });
 
@@ -254,6 +262,12 @@ const draw = (): void => {
     bidirectionalArrows.value.forEach(({ fromId, toId }) => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
+
+        // 3个relay都传递完成数据
+        let targetBlock1 = blocks.value.find((block) => block.chainId === 0 && block.relayId === 2);
+        let targetBlock2 = blocks.value.find((block) => block.chainId === 1 && block.relayId === 2);
+        let targetBlock3 = blocks.value.find((block) => block.chainId === 2 && block.relayId === 2);
+        if (targetBlock1?.text === '' || targetBlock2?.text === '' || targetBlock3?.text === '') return;
         drawBidirectionalArrow(from, to, 10);
     });
 
@@ -261,7 +275,15 @@ const draw = (): void => {
     blocks.value.forEach((block) => {
         if (!ctx.value) return;
 
-        ctx.value.fillStyle = colorMap[block.color];
+        // 只有text不为空
+        if (block.text === '') return;
+        // set colour
+        let fillColour: ColorType = 'grey';
+        if (block.blindedFairInteger === null || block.blindedFairInteger === undefined) fillColour = 'grey';
+        else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = 'red';
+        else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = 'green';
+        else fillColour = 'yellow';
+        ctx.value.fillStyle = fillColour;
         ctx.value.fillRect(block.x, block.y, block.w, block.h);
         ctx.value.strokeStyle = 'black';
         ctx.value.strokeRect(block.x, block.y, block.w, block.h);
@@ -332,5 +354,84 @@ onMounted(() => {
     ctx.value = flowChartRef.value.getContext('2d');
     initializeBlocks();
     draw();
+});
+
+const socket = ref<Socket | null>(null);
+
+onMounted(() => {
+    socket.value = io('http://localhost:3000', {
+        reconnectionAttempts: 5,
+        reconnectionDelay: 5000,
+        query: { address: 'relayInfo', signedAuthString: '' }
+    });
+    socket.value.on('connect', () => {
+        console.log('relay info socket connected to server');
+    });
+
+    // 动态从server获取selected relay
+    socket.value.on('send relay info', (data) => {
+        // 第几条链的第几个relay, relay number, real name address
+        console.log('receive relay info, data: ', data);
+        let {
+            from,
+            to,
+            applicant,
+            relay,
+            nextRelay,
+            blindedFairIntNum,
+            fairIntegerNumber,
+            blindingNumber,
+            hashOfApplicant,
+            chainId,
+            relayId
+        } = data;
+        let formatedNextRelayAddress = formatAddress(nextRelay);
+
+        // 如果是第一条链, 第一个relay, 重置text
+        if (chainId === 0 && relayId === 0) {
+            resetBlockText(blocks, 0, 0, formatedNextRelayAddress, blindedFairIntNum);
+        }
+        // 设置text, 根据文本画出block和arrow
+        resetBlockText(blocks, chainId, relayId, formatedNextRelayAddress, blindedFairIntNum);
+        draw();
+    });
+
+    socket.value.on('disconnect', () => {
+        console.log('relay info socket disconnected from server');
+    });
+});
+const resetBlockText = (
+    blocks: Ref<Block[]>,
+    chainId: number,
+    relayId: number,
+    newText: string = '',
+    blindedFairIntNum: number
+) => {
+    // 找到匹配的区块
+    const targetBlock = blocks.value.find((block) => block.chainId === chainId && block.relayId === relayId);
+
+    // 如果找到目标区块，更新其text值
+    if (targetBlock) {
+        targetBlock.text = newText;
+        targetBlock.blindedFairInteger = blindedFairIntNum;
+    }
+
+    // 重置其他相关区块
+    if (chainId === 0 && relayId === 0) {
+        blocks.value = blocks.value.map((block) => {
+            // applicant real name, anonymous, validaor block
+            if (block.id === 1 || block.id > 10) {
+                return block;
+            } else if (block.id === 2) {
+                return block; // chainid = 0 && relayid = 0, 已经在target block设置
+            } else return { ...block, text: '', blindedFairInteger: -1 };
+        });
+    }
+};
+// 组件卸载时清理
+onUnmounted(() => {
+    if (socket.value) {
+        socket.value.disconnect();
+    }
 });
 </script>

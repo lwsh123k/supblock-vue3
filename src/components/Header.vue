@@ -92,15 +92,17 @@ function handleFileChange(event: Event) {
             lines.pop();
             try {
                 // 打印当前正在处理的用户
-                console.log(file.name);
+                console.log('current user:', file.name);
                 // 处理登录账号格式, 使用socket连接到服务器
                 if (![1, 2, 102].includes(lines.length)) throw new Error('上传文件格式错误');
                 if (lines.length === 1) lines[1] = lines[0];
                 await loginStore.processAccount(lines);
+                console.log('login in success');
                 // 更改网页title
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // relay listens hash, pre relay info, pre app info
                 await backendListen();
+                console.log('backend listen success');
                 // tokenChain.listenAppData();
                 // tokenChain.listenPreRelayData();
             } catch (e) {

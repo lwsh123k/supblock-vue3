@@ -79,17 +79,17 @@ export const useLoginStore = defineStore('login', () => {
         // 如果是申请者的账户, 需要选择随机数, 预先计算需要的值
         if (privateKey.length === 102) {
             let endingAccountIndex = Math.floor(Math.random() * 100) + 2; // 对于多链, 最后的ending account是相同的
+            endingAccountIndex = 5;
+            let selectedNum1 = [endingAccountIndex]; // 避免3条链选择相同的temp account
             for (let i = 0; i < chainNumber; i++) {
                 for (let j = 0; j <= chainLength + 2; j++) {
                     // select different temp account index: [0, 100) + 2, the first two is real and anonymous account
                     let randomIndex;
                     do {
                         randomIndex = Math.floor(Math.random() * 100);
-                    } while (
-                        tempAccountInfo[i].selectedNum.includes(randomIndex + 2) ||
-                        tempAccountInfo[i].selectedNum.includes(endingAccountIndex)
-                    );
+                    } while (selectedNum1.includes(randomIndex + 2));
                     // to use the push method, it must be a array first.
+                    selectedNum1.push(randomIndex + 2);
                     if (j === chainLength + 2) tempAccountInfo[i].selectedNum.push(endingAccountIndex);
                     else tempAccountInfo[i].selectedNum.push(randomIndex + 2);
 

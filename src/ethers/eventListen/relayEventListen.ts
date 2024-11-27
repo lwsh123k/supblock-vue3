@@ -33,11 +33,16 @@ export async function backendListen() {
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
         // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
-        console.log(
-            `app -> relay: hash upload data:`,
-            `from: ${from}, to: ${to}, infoHash: ${infoHash}, tA: ${tA.toNumber()}, tB: ${tB.toNumber()}, uploadTime: ${uploadTime.toString()}, index: ${index.toString()}`
-        );
-
+        console.log('app -> relay: hash upload event detected');
+        console.log('data: ', {
+            from,
+            to,
+            infoHash,
+            tA: tA.toNumber(),
+            tB: tB.toNumber(),
+            uploadTime: uploadTime.toString(),
+            index: index.toString()
+        });
         dataFromApplicant.push({
             role: 'applicant',
             from: from,
@@ -77,31 +82,33 @@ export async function backendListen() {
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
     // 监听未来的event
     storeData.on(app2Relayfilter, async (from, relay, data, dataHash, dataIndex, lastRelay) => {
-        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay);
+        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'future listening');
     });
 
     // next relay listening: current relay -> next relay, using real name account
     let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, realNameAddress);
     // 监听未来的event
     storeData.on(pre2Nextfilter, async (from, relay, data, dataIndex) => {
-        await processPre2NextEvent(from, relay, data, dataIndex);
+        await processPre2NextEvent(from, relay, data, dataIndex, 'future listening');
     });
 
     // 当前block向前10个, 避免错过
     const currentBlockNumber = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlockNumber - 10); // Ensure fromBlock is not negative
-    const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber);
-    // console.log(pastEvents1);
+    const fromBlock = Math.max(0, currentBlockNumber - 20); // Ensure fromBlock is not negative
+    const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber + 10);
+    console.log(`searching from ${fromBlock} to ${currentBlockNumber + 10}`);
+    console.log('app to relay past event:', pastEvents1);
     // app to relay past event
     for (const event of pastEvents1) {
         const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
-        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay);
+        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'past listening');
     }
     // pre relay to next relay past event
-    const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
+    const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber + 10);
+    console.log('pre to next relay past event:', pastEvents2);
     for (const event of pastEvents2) {
         const { from, relay, data, dataIndex } = event.args;
-        await processPre2NextEvent(from, relay, data, dataIndex);
+        await processPre2NextEvent(from, relay, data, dataIndex, 'past listening');
     }
 }
 
@@ -111,8 +118,10 @@ async function processApp2RelayEvent(
     data: string,
     dataHash: string,
     dataIndex: BigNumber,
-    lastRelay: boolean
+    lastRelay: boolean,
+    place: 'future listening' | 'past listening'
 ) {
+    console.log(`监听到app to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
     // decode and save. 解码的数据中包含applicant下次要用的账号
     let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
@@ -124,7 +133,7 @@ async function processApp2RelayEvent(
         console.log(`hash verification not pass, reactived hash: ${dataHash}, computed hash: ${computedHash}`);
         return;
     }
-    console.log(`app -> relay: ${decodedData}`);
+    console.log(decodedData);
 
     // verify data and send back
     // next relay通过socket使用匿名账户回复applicant
@@ -133,8 +142,14 @@ async function processApp2RelayEvent(
     await checkPreDataAndRes(preAppTempAccount, 'pre appliacnt temp account', decodedData, dataHash);
 }
 
-async function processPre2NextEvent(from: string, relay: string, data: string, dataIndex: BigNumber) {
-    console.log('监听到pre relay to next relay消息, data: ');
+async function processPre2NextEvent(
+    from: string,
+    relay: string,
+    data: string,
+    dataIndex: BigNumber,
+    place: 'future listening' | 'past listening'
+) {
+    console.log(`监听到pre relay to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
     // 收到的数据中包含pre applicant temp account
     let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);

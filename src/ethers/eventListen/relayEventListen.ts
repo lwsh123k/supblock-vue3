@@ -79,7 +79,7 @@ export async function backendListen() {
     // store contract事件监听
     const currentBlockNumber = await provider.getBlockNumber();
     const fromBlock = Math.max(0, currentBlockNumber - 20);
-    const targetBlockCount = 3; // 目标监听的区块数量
+    const targetBlockCount = 5; // 目标监听的区块数量
     let processedBlockCount = 0; // 已处理的区块数量
 
     // next relay listening: app -> next, using real name account
@@ -127,7 +127,7 @@ export async function backendListen() {
             const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
             await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'current listening');
         }
-        const events2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
+        const events2 = await storeData.queryFilter(pre2Nextfilter, blockNumber, blockNumber);
         console.log('pre to next relay current event:', events2);
         for (const event of events2) {
             const { from, relay, data, dataIndex } = event.args;

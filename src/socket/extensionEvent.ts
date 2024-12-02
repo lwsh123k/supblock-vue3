@@ -123,9 +123,14 @@ export function bindExtension(socket: Socket) {
             let readOnlyStoreData = await getStoreData();
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
             await writeStoreData.setPre2Next(relayAddress, encryptedData);
-            console.log('pre relay -> next relay 数据上链完成');
-            console.dir(
-                `pre relay -> next relay data: pre relay account: ${relayPubkey}, next relay address: ${relayAddress}, data:`,
+            let blockNumber = await provider.getBlockNumber();
+            console.log('pre relay -> next relay 数据上链完成', 'block number:', blockNumber);
+            console.log(
+                'pre relay -> next relay data: pre relay account:',
+                relayPubkey,
+                'next relay address:',
+                relayAddress,
+                'data:',
                 data
             );
         } catch (error) {

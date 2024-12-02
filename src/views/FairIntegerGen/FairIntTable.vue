@@ -172,7 +172,7 @@ async function uploadHashAndListen() {
     // applicant: temp account, relay: anonymous account
     let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
     let addressB = relays[step].anonymousAccount;
-    console.log(`applicant interacting with ${addressB}: hash upload`);
+    console.log(`applicant interacting with ${addressB}`);
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();
     let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
@@ -206,8 +206,8 @@ async function uploadHashAndListen() {
     await send2Extension(addressA, addressB, hash, b, chainId, step);
 
     //上传hash
-    console.log('hash: ', hash);
     await writeFair.setReqHash(addressB, hash);
+    console.log('hash upload success:', hash);
     datas[step][0].status = 'hash已上传';
 
     // 开启监听
@@ -228,9 +228,10 @@ async function uploadHashAndListen() {
             // ??
         })
         .catch((error) => {
-            // hashPromise失败，就停止numPromise
-            datas[step][1].status = '未在30s内上传hash';
+            // 防止hash没监听到, 但随机数监听到
+            if (datas[step][1].status !== '随机数已上传') datas[step][1].status = '未在30s内上传hash';
             console.log(error);
+            // hashPromise失败，就停止numPromise
             rejectAndCleanup('hash not upload, reject listen upload');
             reuploadReject('hash not upload, reject listen reupload');
         });

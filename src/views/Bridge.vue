@@ -291,6 +291,7 @@ watch(
         // console.log('watch'); // watch先于computed执行
         activeStep.value = length - 1; // update to show latest data
         await uploadHashAndListen();
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         await uploadRandomNum();
     }
 );

@@ -32,15 +32,13 @@
                     <el-input v-model="chain1.t" class="input-spacing" placeholder="t2值" />
                     <el-input v-model="chain2.t" class="input-spacing" placeholder="t3值" />
                     <br />
-                    <div class="flex items-center">
+                    <div class="flex flex-row items-center space-x-4">
                         <button
                             class="input-spacing w-5 rounded bg-sky-500 px-4 py-2 text-lg font-bold text-white hover:bg-blue-600 md:w-auto"
                             @click="verifySigFunc">
                             verify sig
                         </button>
-                        <p class="input-spacing ml-4 text-xl font-bold">
-                            verification result: {{ verifyResultMessage }}
-                        </p>
+                        <p class="text-xl font-bold">verification result: {{ verifyResultMessage }}</p>
                     </div>
                 </div>
             </el-collapse-item>
@@ -68,16 +66,21 @@ const { blindedMessage, chain0, chain1, chain2 } = storeToRefs(verifySigStore);
 const activeNames = ref(['1']);
 
 // 签名验证
-let hasVerify = false,
-    verifyResult = false;
+const hasVerify = ref(false);
+const verifyResult = ref(false);
 function verifySigFunc() {
     let res = verifySigStore.verifySigFunc();
-    hasVerify = true;
-    verifyResult = res;
+    hasVerify.value = true;
+    verifyResult.value = res;
+    console.log(`has verify: ${hasVerify.value}, verify result: ${verifyResult.value}`);
 }
+
 // 展示验证结果
 const verifyResultMessage = computed(() => {
-    return hasVerify === true ? verifyResult : '';
+    if (hasVerify.value) {
+        return verifyResult.value === true ? 'valid signature' : 'invalid signature';
+    }
+    return '';
 });
 </script>
 

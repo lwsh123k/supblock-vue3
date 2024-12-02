@@ -168,7 +168,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         chainIndex: number,
         nextRelayIndex: number,
         ni: number,
-        updatePlace: string = 'event listening'
+        updatePlace: 'event listening A' | 'event listening B' | 'extension listening'
     ) {
         // 获取b
         const loginStore = useLoginStore();
@@ -185,9 +185,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
 
         // check has updated
         if (relay[nextRelayIndex].publicKey != '') {
-            console.log(
-                `next relay real name account has updated in ${updatePlace === 'event listening' ? 'extension' : 'event listening'}`
-            );
+            console.log(`${updatePlace} tries to update accounts that have already been updated.`);
             return;
         }
         console.log(`updating relay real name account in ${updatePlace}`);

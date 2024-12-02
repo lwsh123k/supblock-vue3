@@ -59,7 +59,7 @@ export function bindExtension(socket: Socket) {
             let nextRelayIndex = specificRelayIndex + 1;
 
             // 更新存储的信息
-            await setNextRelayRealnameInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension');
+            await setNextRelayRealnameInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension listening');
 
             // 向next relay实名账户发送消息: 获取对方的公钥, 需要发送的信息
             let data = getApp2RelayData(chainId, nextRelayIndex); // 获得下一轮需要的数据

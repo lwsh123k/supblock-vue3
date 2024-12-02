@@ -76,6 +76,12 @@ export async function backendListen() {
         // finally do this by watching dataFromApplicant.length
     });
 
+    // store contract事件监听
+    const currentBlockNumber = await provider.getBlockNumber();
+    const fromBlock = Math.max(0, currentBlockNumber - 20);
+    const targetBlockCount = 3; // 目标监听的区块数量
+    let processedBlockCount = 0; // 已处理的区块数量
+
     // next relay listening: app -> next, using real name account
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
@@ -92,11 +98,9 @@ export async function backendListen() {
         await processPre2NextEvent(from, relay, data, dataIndex, 'future listening');
     });
 
-    // 当前block向前10个, 避免错过
-    const currentBlockNumber = await provider.getBlockNumber();
-    const fromBlock = Math.max(0, currentBlockNumber - 20); // Ensure fromBlock is not negative
-    const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber + 10);
-    console.log(`searching from ${fromBlock} to ${currentBlockNumber + 10}`);
+    // 当前block向前20个, 避免错过
+    const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber);
+    console.log(`searching from ${fromBlock} to ${currentBlockNumber}`);
     console.log('app to relay past event:', pastEvents1);
     // app to relay past event
     for (const event of pastEvents1) {
@@ -104,12 +108,44 @@ export async function backendListen() {
         await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'past listening');
     }
     // pre relay to next relay past event
-    const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber + 10);
+    const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
     console.log('pre to next relay past event:', pastEvents2);
     for (const event of pastEvents2) {
         const { from, relay, data, dataIndex } = event.args;
         await processPre2NextEvent(from, relay, data, dataIndex, 'past listening');
     }
+
+    // 更加保险的做法, 监听current block +0, +1, +2区块
+    // 设置 block 监听器并在处理完指定数量后移除
+    const blockListener = async (blockNumber: number) => {
+        console.log(`New block: ${blockNumber}`);
+
+        // 查询该区块的事件
+        const events1 = await storeData.queryFilter(app2Relayfilter, blockNumber, blockNumber);
+        console.log('app to relay current event:', events1);
+        for (const event of events1) {
+            const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
+            await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'current listening');
+        }
+        const events2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
+        console.log('pre to next relay current event:', events2);
+        for (const event of events2) {
+            const { from, relay, data, dataIndex } = event.args;
+            await processPre2NextEvent(from, relay, data, dataIndex, 'current listening');
+        }
+
+        processedBlockCount++;
+        console.log(`Processed ${processedBlockCount} of ${targetBlockCount} blocks`);
+
+        // 当处理完指定数量的区块后，移除监听器
+        if (processedBlockCount >= targetBlockCount) {
+            console.log('Target block count reached, removing block listener');
+            provider.removeListener('block', blockListener);
+        }
+    };
+
+    // 添加 block 监听器
+    provider.on('block', blockListener);
 }
 
 async function processApp2RelayEvent(
@@ -119,7 +155,7 @@ async function processApp2RelayEvent(
     dataHash: string,
     dataIndex: BigNumber,
     lastRelay: boolean,
-    place: 'future listening' | 'past listening'
+    place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到app to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
@@ -147,7 +183,7 @@ async function processPre2NextEvent(
     relay: string,
     data: string,
     dataIndex: BigNumber,
-    place: 'future listening' | 'past listening'
+    place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到pre relay to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
@@ -169,13 +205,13 @@ async function checkPreDataAndRes(
     const { chainLength } = useLoginStore();
     let savedData = relayReceivedData.get(preAppTempAccount);
 
-    // 一开始就没有数据 or overwrite previous data???
+    // 一开始就没有数据 or overwrite previous data???!!!
     if (savedData === undefined) {
         savedData = {};
     }
     // 避免重复打开
     if (savedData.appToRelayData && savedData.preToNextRelayData) {
-        console.log('saved data has existed');
+        console.log('saved data has existed, data has been processed');
         return;
     }
 

@@ -263,7 +263,7 @@ async function uploadHashAndListen() {
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
                 // set next relay number, update next relay info
-                await setNextRelayRealnameInfo(chainId, ++currentStep, ni);
+                await setNextRelayRealnameInfo(chainId, ++currentStep, ni, 'event listening A');
             }
         });
 
@@ -276,7 +276,7 @@ async function uploadHashAndListen() {
             datas[step][1].randomText = datas[step][1].randomNumBefore + ' / ' + ni.toString();
             datas[step][1].isReupload = true;
             console.log('监听到relay重传随机数');
-            await setNextRelayRealnameInfo(chainId, ++currentStep, ni);
+            await setNextRelayRealnameInfo(chainId, ++currentStep, ni, 'event listening A');
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -361,11 +361,11 @@ watchEffect(async () => {
                 datas[i][0].isReupload = true;
                 // 设置next relay
                 let nextStep = i + 1;
-                await setNextRelayRealnameInfo(chainId, nextStep, niReuploaded);
+                await setNextRelayRealnameInfo(chainId, nextStep, niReuploaded, 'event listening B');
             } else {
                 let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99;
                 let nextStep = i + 1;
-                await setNextRelayRealnameInfo(chainId, nextStep, nextIndex);
+                await setNextRelayRealnameInfo(chainId, nextStep, nextIndex, 'event listening B');
                 console.log('随机数正确 ');
             }
 

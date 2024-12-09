@@ -4,6 +4,7 @@ import Bridge from '../views/Bridge.vue';
 import FairIntGen from '@/views/FairIntGen.vue';
 import Stats from '@/views/Stats.vue';
 import RelayInfo from '@/views/RelayInfo.vue';
+import Trace from '@/views/Trace.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,10 +17,10 @@ const router = createRouter({
             path: '/bridge',
             component: Bridge
         },
-        {
-            path: '/transfer',
-            component: Transfer
-        },
+        // {
+        //     path: '/transfer',
+        //     component: Transfer
+        // },
         {
             path: '/authentication',
             component: FairIntGen
@@ -34,6 +35,10 @@ const router = createRouter({
         {
             path: '/relayInfo',
             component: RelayInfo
+        },
+        {
+            path: '/trace',
+            component: Trace
         }
     ]
 });

@@ -1,20 +1,7 @@
 <template>
     <div style="display: flex; flex-direction: column; align-items: center; margin: 2vh 0">
         <!-- margin: 设置自己边距; flex: 设置子元素位置 -->
-        <canvas
-            ref="flowChartRef"
-            :width="1300"
-            :height="400"
-            style="border: 1px solid #000"
-            @mousedown="handleMouseDown"
-            @mousemove="handleMouseMove"
-            @mouseup="handleMouseUp"
-            @dblclick="handleDoubleClick"></canvas>
-        <div class="mt-2">
-            <button @click="changeColor('red')" class="mr-2">Red</button>
-            <button @click="changeColor('green')" class="mr-2">Green</button>
-            <button @click="changeColor('yellow')">yellow</button>
-        </div>
+        <canvas ref="flowChartRef" :width="1300" :height="400" style="border: 1px solid #000"></canvas>
     </div>
 </template>
 
@@ -59,39 +46,51 @@ type ColorMapType = Record<ColorType, string>;
 // ref 类型定义
 const flowChartRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
-const selectedBlock = ref<Block | null>(null);
-const isDragging = ref<boolean>(false);
-const dragOffsetX = ref<number>(0);
-const dragOffsetY = ref<number>(0);
 
 const blocks = ref<Block[]>([
-    { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
-    { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
-    { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
-    { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
-    { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
-    { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
-    { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
-    { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
-    { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
-    { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
-    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' },
-    { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'blue' }
+    { id: 1, x: -150, y: 150, w: 150, h: 50, text: 'validator', color: 'blue' },
+    { id: 2, x: 50, y: 150, w: 140, h: 50, text: 'anonymous account', color: 'grey' },
+
+    // 竖向第一层
+    { id: 3, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
+    { id: 4, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
+    { id: 5, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
+
+    // 竖向第二层
+    { id: 6, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
+    { id: 7, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
+    { id: 8, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
+
+    // 竖向第三层
+    { id: 9, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
+    { id: 10, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
+    { id: 11, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
+
+    // 最终汇合节点(原 id:11 -> 新 id:12)
+    { id: 12, x: 700, y: 150, w: 150, h: 50, text: 'real name account', color: 'blue' }
 ]);
 
 const arrows = ref<Arrow[]>([
+    // 新增的箭头连接：从新起点(1)到原先的第一个节点(2)
     { fromId: 1, toId: 2 },
-    { fromId: 1, toId: 3 },
-    { fromId: 1, toId: 4 },
+
+    // 原本指向 id:1 的箭头已不再需要（因为以前的id:1现在是id:2）
+    // 调整所有箭头的索引 +1
+    { fromId: 2, toId: 3 },
+    { fromId: 2, toId: 4 },
     { fromId: 2, toId: 5 },
+
     { fromId: 3, toId: 6 },
     { fromId: 4, toId: 7 },
     { fromId: 5, toId: 8 },
+
     { fromId: 6, toId: 9 },
     { fromId: 7, toId: 10 },
     { fromId: 8, toId: 11 },
-    { fromId: 9, toId: 11 },
-    { fromId: 10, toId: 11 }
+
+    { fromId: 9, toId: 12 },
+    { fromId: 10, toId: 12 },
+    { fromId: 11, toId: 12 }
 ]);
 
 const bidirectionalArrows = ref<Arrow[]>([{ fromId: 11, toId: 12 }]);
@@ -250,7 +249,7 @@ const draw = (): void => {
         const to = blocks.value.find((b) => b.id === toId)!;
 
         // from和to text不为空
-        if (from.text === '' || to.text === '') return;
+        // if (from.text === '' || to.text === '') return;
 
         const startX = from.x + from.w / 2;
         const startY = from.y + from.h / 2;
@@ -277,15 +276,14 @@ const draw = (): void => {
         if (!ctx.value) return;
 
         // 只有text不为空
-        if (block.text === '') return;
+        // if (block.text === '') return;
         // set colour
-        let fillColour = colorMap['grey'];
-        if (block.text === 'real name account' || block.text === 'validator') fillColour = colorMap['blue'];
-        else if (block.blindedFairInteger === null || block.blindedFairInteger === undefined)
-            fillColour = colorMap['grey'];
-        else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = colorMap['red'];
-        else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = colorMap['green'];
-        else fillColour = colorMap['yellow'];
+        // let fillColour: ColorType = 'grey';
+        // if (block.blindedFairInteger === null || block.blindedFairInteger === undefined) fillColour = 'grey';
+        // else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = 'red';
+        // else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = 'green';
+        // else fillColour = 'yellow';
+        let fillColour = colorMap[block.color];
         ctx.value.fillStyle = fillColour;
         ctx.value.fillRect(block.x, block.y, block.w, block.h);
         ctx.value.strokeStyle = 'black';
@@ -301,54 +299,28 @@ const draw = (): void => {
     drawLegend();
 };
 
-const changeColor = (color: ColorType): void => {
-    if (selectedBlock.value) {
-        selectedBlock.value.color = color;
-        draw();
-    }
-};
+const handleCanvasClick = (event: MouseEvent): void => {
+    if (!flowChartRef.value) return;
 
-const handleMouseDown = (e: MouseEvent): void => {
-    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // 获取鼠标点击的相对位置
+    const rect = flowChartRef.value.getBoundingClientRect();
+    // 计算 Canvas 显示与逻辑坐标的比例
+    const scaleX = flowChartRef.value.width / rect.width;
+    const scaleY = flowChartRef.value.height / rect.height;
 
-    selectedBlock.value =
-        blocks.value.find(
-            (block) => x >= block.x && x <= block.x + block.w && y >= block.y && y <= block.y + block.h
-        ) || null;
+    // 将鼠标点击坐标转换为 Canvas 内部坐标
+    const mouseX = (event.clientX - rect.left) * scaleX;
+    const mouseY = (event.clientY - rect.top) * scaleY;
 
-    if (selectedBlock.value) {
-        isDragging.value = true;
-        dragOffsetX.value = x - selectedBlock.value.x;
-        dragOffsetY.value = y - selectedBlock.value.y;
-    }
-};
+    // 检测是否点击到某个 block
+    const clickedBlock = blocks.value.find(
+        (block) => mouseX >= block.x && mouseX <= block.x + block.w && mouseY >= block.y && mouseY <= block.y + block.h
+    );
 
-const handleMouseMove = (e: MouseEvent): void => {
-    if (isDragging.value && selectedBlock.value) {
-        const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-
-        selectedBlock.value.x = x - dragOffsetX.value;
-        selectedBlock.value.y = y - dragOffsetY.value;
-
-        draw();
-    }
-};
-
-const handleMouseUp = (): void => {
-    isDragging.value = false;
-};
-
-const handleDoubleClick = (): void => {
-    if (selectedBlock.value) {
-        const text = prompt('Enter text:', selectedBlock.value.text);
-        if (text !== null) {
-            selectedBlock.value.text = text;
-            draw();
-        }
+    if (clickedBlock) {
+        console.log('Clicked block:', clickedBlock);
+        // 执行点击后的逻辑，例如高亮 block 或显示信息
+        // handleBlockClick(clickedBlock);
     }
 };
 
@@ -357,6 +329,8 @@ onMounted(() => {
     ctx.value = flowChartRef.value.getContext('2d');
     initializeBlocks();
     draw();
+    // 点击block
+    flowChartRef.value.addEventListener('click', handleCanvasClick);
 });
 
 const socket = ref<Socket | null>(null);
@@ -365,7 +339,7 @@ onMounted(() => {
     socket.value = io('http://localhost:3000', {
         reconnectionAttempts: 5,
         reconnectionDelay: 5000,
-        query: { address: 'relayInfo', signedAuthString: '' }
+        query: { address: 'Trace', signedAuthString: '' }
     });
     socket.value.on('connect', () => {
         console.log('relay info socket connected to server');
@@ -435,6 +409,9 @@ const resetBlockText = (
 onUnmounted(() => {
     if (socket.value) {
         socket.value.disconnect();
+    }
+    if (flowChartRef.value) {
+        flowChartRef.value.removeEventListener('click', handleCanvasClick);
     }
 });
 </script>

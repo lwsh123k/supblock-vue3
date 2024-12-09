@@ -3,9 +3,10 @@
         <!-- 顶部路由链接 -->
         <router-link to="/authentication" class="nav-link">Authentication</router-link>
         <router-link to="/bridge" id="bridge-id" class="nav-link">Bridge</router-link>
-        <router-link to="/transfer" class="nav-link">Transfer</router-link>
+        <!-- <router-link to="/transfer" class="nav-link">Transfer</router-link> -->
         <router-link to="/stats" class="nav-link">Stats</router-link>
         <router-link to="/relayInfo" class="nav-link">RelayInfo</router-link>
+        <router-link to="/trace" class="nav-link">Trace</router-link>
 
         <div class="upload">
             <!-- 文件上传按钮 -->

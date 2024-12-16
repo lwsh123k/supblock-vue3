@@ -112,10 +112,14 @@ export function bindExtension(socket: Socket) {
             // use fake data
             let relayStore = useRelayStore();
             let useFakeData = toRef(relayStore, 'useFakeData');
-            if (useFakeData.value === true) {
+            let fakeDataTime = toRef(relayStore, 'fakeDataTime');
+            // 第一次使用伪造数据, 第二次关闭伪造数据按钮
+            if (fakeDataTime.value === 1) useFakeData.value = false;
+            // 判断是否使用伪造数据
+            if (useFakeData.value === true && fakeDataTime.value === 0) {
                 data.t = '3333333333333333333333333333333333333333333333333333333333334455';
                 // only use fake data once
-                useFakeData.value = false;
+                fakeDataTime.value++;
             }
             let encryptedData = await getEncryptData(relayPubkey, data);
 

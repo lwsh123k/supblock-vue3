@@ -29,7 +29,7 @@ export async function getPre2NextData(
     }
     console.log('expected data: ', expectedData);
 
-    // encrypt t with pubkey of current app temp account
+    // encrypt t with c
     let c = expectedData?.appToRelayData?.c!;
     let tokenAddc = addHexAndMod(expectedData?.preToNextRelayData?.t, c);
     console.log(

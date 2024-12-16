@@ -39,6 +39,7 @@ export type RelayResDate = {
     from: string;
     to: string;
     nextRelayAnonymousAccount: string;
+    token: string; // token + c
     appToRelayDataHash: string; // app给relay发送的数据的hash
     chainIndex: number;
 };

@@ -48,49 +48,33 @@ const flowChartRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
 
 const blocks = ref<Block[]>([
-    { id: 1, x: -150, y: 150, w: 150, h: 50, text: 'validator', color: 'blue' },
-    { id: 2, x: 50, y: 150, w: 140, h: 50, text: 'anonymous account', color: 'grey' },
-
-    // 竖向第一层
-    { id: 3, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
-    { id: 4, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
-    { id: 5, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
-
-    // 竖向第二层
-    { id: 6, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
-    { id: 7, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
-    { id: 8, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
-
-    // 竖向第三层
-    { id: 9, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
-    { id: 10, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
-    { id: 11, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
-
-    // 最终汇合节点(原 id:11 -> 新 id:12)
-    { id: 12, x: 700, y: 150, w: 150, h: 50, text: 'real name account', color: 'blue' }
+    { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
+    { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
+    { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
+    { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
+    { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
+    { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
+    { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
+    { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
+    { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
+    { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
+    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' },
+    { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'blue' }
 ]);
 
 const arrows = ref<Arrow[]>([
-    // 新增的箭头连接：从新起点(1)到原先的第一个节点(2)
-    { fromId: 1, toId: 2 },
-
-    // 原本指向 id:1 的箭头已不再需要（因为以前的id:1现在是id:2）
-    // 调整所有箭头的索引 +1
-    { fromId: 2, toId: 3 },
-    { fromId: 2, toId: 4 },
-    { fromId: 2, toId: 5 },
-
-    { fromId: 3, toId: 6 },
-    { fromId: 4, toId: 7 },
-    { fromId: 5, toId: 8 },
-
-    { fromId: 6, toId: 9 },
-    { fromId: 7, toId: 10 },
-    { fromId: 8, toId: 11 },
-
-    { fromId: 9, toId: 12 },
-    { fromId: 10, toId: 12 },
-    { fromId: 11, toId: 12 }
+    { fromId: 2, toId: 1 },
+    { fromId: 3, toId: 1 },
+    { fromId: 4, toId: 1 },
+    { fromId: 5, toId: 2 },
+    { fromId: 6, toId: 3 },
+    { fromId: 7, toId: 4 },
+    { fromId: 8, toId: 5 },
+    { fromId: 9, toId: 6 },
+    { fromId: 10, toId: 7 },
+    { fromId: 11, toId: 8 },
+    { fromId: 11, toId: 9 },
+    { fromId: 11, toId: 10 }
 ]);
 
 const bidirectionalArrows = ref<Arrow[]>([{ fromId: 11, toId: 12 }]);
@@ -235,6 +219,42 @@ const drawLegend = (): void => {
     });
 };
 
+// 根据目标方块相对于源方块的位置来选择对角点
+const getDiagonalCorners = (from: Block, to: Block): { start: Point; end: Point } => {
+    const fromTopLeft: Point = { x: from.x, y: from.y };
+    const fromTopRight: Point = { x: from.x + from.w, y: from.y };
+    const fromBottomLeft: Point = { x: from.x, y: from.y + from.h };
+    const fromBottomRight: Point = { x: from.x + from.w, y: from.y + from.h };
+
+    const toTopLeft: Point = { x: to.x, y: to.y };
+    const toTopRight: Point = { x: to.x + to.w, y: to.y };
+    const toBottomLeft: Point = { x: to.x, y: to.y + to.h };
+    const toBottomRight: Point = { x: to.x + to.w, y: to.y + to.h };
+
+    const dx = to.x + to.w / 2 - (from.x + from.w / 2);
+    const dy = to.y + to.h / 2 - (from.y + from.h / 2);
+
+    // 根据dx, dy所处的象限决定使用哪一对对角点
+    // 这里的逻辑是一个示例：
+    // 1. 如果to在from的右下方(dx > 0, dy > 0)，使用from的右下角到to的左上角
+    // 2. 如果to在from的右上方(dx > 0, dy < 0)，使用from的右上角到to的左下角
+    // 3. 如果to在from的左下方(dx < 0, dy > 0)，使用from的左下角到to的右上角
+    // 4. 如果to在from的左上方(dx < 0, dy < 0)，使用from的左上角到to的右下角
+
+    if (dx > 0 && dy > 0) {
+        // to在from的右下
+        return { start: fromBottomRight, end: toTopLeft };
+    } else if (dx > 0 && dy < 0) {
+        // to在from的右上
+        return { start: fromTopRight, end: toBottomLeft };
+    } else if (dx < 0 && dy > 0) {
+        // to在from的左下
+        return { start: fromBottomLeft, end: toTopRight };
+    } else {
+        // to在from的左上
+        return { start: fromTopLeft, end: toBottomRight };
+    }
+};
 const draw = (): void => {
     if (!ctx.value || !flowChartRef.value) return;
 
@@ -248,26 +268,36 @@ const draw = (): void => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
 
-        // from和to text不为空
-        // if (from.text === '' || to.text === '') return;
+        const fromCenterX = from.x + from.w / 2;
+        const fromCenterY = from.y + from.h / 2;
+        const toCenterX = to.x + to.w / 2;
+        const toCenterY = to.y + to.h / 2;
 
-        const startX = from.x + from.w / 2;
-        const startY = from.y + from.h / 2;
-        // 计算arrow和block的交叉点
-        const intersection = findIntersectionPoint(startX, startY, to.x + to.w / 2, to.y + to.h / 2, to);
-        drawConnection(startX, startY, intersection.x, intersection.y);
+        const dx = toCenterX - fromCenterX;
+        const dy = toCenterY - fromCenterY;
+
+        let startPoint: Point;
+        let endPoint: Point;
+
+        // 判断是否为斜线连接(非纯水平、非纯垂直)
+        if (dx !== 0 && dy !== 0) {
+            // 斜线情况使用对角点连接
+            const { start, end } = getDiagonalCorners(from, to);
+            startPoint = start;
+            endPoint = end;
+        } else {
+            // 水平或垂直情况使用原逻辑
+            startPoint = { x: fromCenterX, y: fromCenterY };
+            endPoint = findIntersectionPoint(fromCenterX, fromCenterY, toCenterX, toCenterY, to);
+        }
+
+        drawConnection(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
     });
 
     // Draw bidirectional arrows
     bidirectionalArrows.value.forEach(({ fromId, toId }) => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
-
-        // 3个relay都传递完成数据
-        let targetBlock1 = blocks.value.find((block) => block.chainId === 0 && block.relayId === 2);
-        let targetBlock2 = blocks.value.find((block) => block.chainId === 1 && block.relayId === 2);
-        let targetBlock3 = blocks.value.find((block) => block.chainId === 2 && block.relayId === 2);
-        if (targetBlock1?.text === '' || targetBlock2?.text === '' || targetBlock3?.text === '') return;
         drawBidirectionalArrow(from, to, 10);
     });
 

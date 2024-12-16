@@ -192,15 +192,15 @@ const drawLegend = (): void => {
     if (!ctx.value || !flowChartRef.value) return;
 
     const legendY = 355;
-    const itemWidth = 230;
+    const itemWidth = 280;
     const itemHeight = 20;
-    const totalWidth = itemWidth * 3 + 40;
+    const totalWidth = itemWidth * 3 + 100;
     const startX = (flowChartRef.value.width - totalWidth) / 2;
 
     const legends: Legend[] = [
-        { color: 'red', text: 'Verified User' },
-        { color: 'green', text: 'Anonymous User' },
-        { color: 'yellow', text: 'Validator' }
+        { color: 'red', text: 'privacy-oriented users' },
+        { color: 'yellow', text: 'protocol-compliant users' },
+        { color: 'green', text: 'security-oriented users' }
     ];
 
     legends.forEach((legend, index) => {

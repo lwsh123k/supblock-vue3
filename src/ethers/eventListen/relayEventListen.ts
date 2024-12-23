@@ -3,7 +3,7 @@ import { getFairIntGen, getStoreData } from '../contract';
 import { BigNumber, Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
 import { ensure0xPrefix, getDecryptData, keccak256, verifyHashBackward, verifyHashForward } from '../util';
-import { sendNextRelay2AppData } from '../chainData/getRelayResData';
+import { sendNextRelay2AppData } from '../chainData/getRelay2AppData';
 import {
     relaySend2NextData,
     relayReceivedData,
@@ -26,17 +26,17 @@ export async function backendListen() {
     const dataToApplicant = relayStore.dataToApplicant; // 取引用, 保持reactive
     const dataFromApplicant = relayStore.dataFromApplicant;
 
-    // relay listening: hash upload, using anonymous account
+    // relay监听hash上传, 使用realname account
     let { address: anonymousAddress } = allAccountInfo.anonymousAccount;
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
     const fairIntGen = await getFairIntGen();
-    let hashFilter = fairIntGen.filters.ReqHashUpload(null, anonymousAddress);
+    let hashFilter = fairIntGen.filters.ReqHashUpload(null, realNameAddress);
     fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
         // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
         console.log('app -> relay: hash upload event detected');
         console.log('data: ', {
-            from,
-            to,
+            applicant: from,
+            relayRealNameAccount: to,
             infoHash,
             tA: tA.toNumber(),
             tB: tB.toNumber(),
@@ -82,19 +82,19 @@ export async function backendListen() {
     const targetBlockCount = 5; // 目标监听的区块数量
     let processedBlockCount = 0; // 已处理的区块数量
 
-    // next relay listening: app -> next, using real name account
+    // relay监听store data, 使用anonymous account
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
-    let app2Relayfilter = storeData.filters.App2RelayEvent(null, realNameAddress);
+    let app2Relayfilter = storeData.filters.App2RelayEvent(null, anonymousAddress);
     // 监听未来的event
     storeData.on(app2Relayfilter, async (from, relay, data, dataHash, dataIndex, lastRelay) => {
         await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'future listening');
     });
 
     // next relay listening: current relay -> next relay, using real name account
-    let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, realNameAddress);
+    let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, anonymousAddress);
     // 监听未来的event
-    storeData.on(pre2Nextfilter, async (from, relay, data, dataIndex) => {
+    storeData.on(pre2Nextfilter, async (from, relay, data, dataHash, dataIndex) => {
         await processPre2NextEvent(from, relay, data, dataIndex, 'future listening');
     });
 
@@ -160,7 +160,7 @@ async function processApp2RelayEvent(
     console.log(`监听到app to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
     // decode and save. 解码的数据中包含applicant下次要用的账号
-    let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
+    let decodedData: AppToRelayData = await getDecryptData(allAccountInfo.anonymousAccount.key, data);
     // 验证接收到的数据和hash一致
     let computedHash = keccak256(JSON.stringify(decodedData));
     computedHash = ensure0xPrefix(computedHash);
@@ -188,7 +188,7 @@ async function processPre2NextEvent(
     console.log(`监听到pre relay to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
     // 收到的数据中包含pre applicant temp account
-    let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.realNameAccount.key, data);
+    let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.anonymousAccount.key, data);
     let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
     console.log(decodedData);
 
@@ -196,6 +196,8 @@ async function processPre2NextEvent(
     if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
     await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
 }
+
+// 检查l大1, 正向hash, 申请者发送的token和relay接收的是否一致
 async function checkPreDataAndRes(
     preAppTempAccount: string,
     from: string,
@@ -290,6 +292,28 @@ function verifyData(data: CombinedData) {
     let res1 = verifyHashForward(appTempAccount, r, hf, preHf, true);
     console.log('receive data from pre relay and applicant, hash chain verification result: ', res1);
 
+    // 验证token
+    let tokenVerifyResult = true;
+    let { chainLength } = useLoginStore();
+    let l = data.appToRelayData.l;
+    // 链的长度为3, chain length = 5
+    if (l === 1)
+        console.log(
+            `no need to verify token, when l = 1. appliacnt token: ${data.appToRelayData?.token}, pre relay token: ${data.preToNextRelayData?.t}`
+        );
+    else if (l >= 2 && l <= chainLength - 2) {
+        let tokenFromApplicant = data.appToRelayData.token;
+        let tokenFromPreRelay = data.preToNextRelayData.t;
+        if (tokenFromApplicant !== tokenFromPreRelay) {
+            console.log(
+                `token is different. appliacnt token: ${tokenFromApplicant}, pre relay token: ${tokenFromPreRelay}`
+            );
+            tokenVerifyResult = false;
+        }
+        console.log(
+            `verify token success. appliacnt token: ${tokenFromApplicant}, pre relay token: ${tokenFromPreRelay}`
+        );
+    }
     // 数据不够, 只能验证正向hash
     let hb = data.preToNextRelayData.hb,
         nextHb = data.appToRelayData.hb;
@@ -297,7 +321,7 @@ function verifyData(data: CombinedData) {
     // let res2 = verifyHashBackward()
     let res2 = true;
 
-    if (res1 && res2) return true;
+    if (res1 && res2 && tokenVerifyResult) return true;
 
     return false;
 }

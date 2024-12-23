@@ -3,7 +3,7 @@ import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { storeToRefs } from 'pinia';
 import { useLoginStore } from '@/stores/modules/login';
-import type { RelayResDate } from '@/ethers/chainData/chainDataType';
+import type { RelayResData } from '@/ethers/chainData/chainDataType';
 import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
 import { toRef, toRefs } from 'vue';
 import type { PublicKey, toApplicantSigned } from '@/views/FairIntegerGen/types';
@@ -178,21 +178,34 @@ export function appGetSignature(socket0: Socket) {
     });
 }
 
-// app listening: next relay's anonymous account
+// app listening: next relay's real name account
 export function appRecevieRelayData(socket: Socket) {
     let applicantStore = useApplicantStore();
     let relays = applicantStore.relays;
     let { relayIndex } = storeToRefs(applicantStore);
-    socket.on('next relay to app', (data: RelayResDate) => {
-        // console.log(data);
-        let { from, to, nextRelayAnonymousAccount, chainIndex } = data;
-        console.log(
-            `update relay anonymous account in socket, chain index: ${chainIndex}, next relay anonymous account: ${nextRelayAnonymousAccount}`
-        );
+    socket.on(
+        'next relay to app: send real name account)',
+        ({
+            data,
+            applicantDataHash,
+            chainIndex
+        }: {
+            data: RelayResData;
+            applicantDataHash: string;
+            chainIndex: number;
+        }) => {
+            let { from, to, nextRelayRealnameAccount, token } = data;
+            console.log(
+                `update relay anonymous account in socket, chain index: ${chainIndex}, next relay real name account: ${nextRelayRealnameAccount}`
+            );
 
-        // update relays to use the relay's anonymous account in next round of joint random selection
-        relays[chainIndex][relayIndex.value[chainIndex]].anonymousAccount = nextRelayAnonymousAccount;
-    });
+            // 更新next relay real name account和token
+            // relayIndex.value[chainIndex]在extension通知applicant新页面打开时, 值已经+1
+            let intermediateToken = toRef(useVerifyStore(), 'intermediateToken');
+            intermediateToken.value[chainIndex][relayIndex.value[chainIndex]] = token;
+            relays[chainIndex][relayIndex.value[chainIndex]].realNameAccount = nextRelayRealnameAccount;
+        }
+    );
 }
 
 // app sends blinding number to validator

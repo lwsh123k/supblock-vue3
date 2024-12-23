@@ -1,14 +1,15 @@
 import type { Point } from 'ecurve';
 import { defineStore } from 'pinia';
 import { ref, reactive } from 'vue';
-import type { Token } from './applicant';
 import ecc from './eccBlind';
 import BigInteger from 'bigi';
 import eccBlind from './eccBlind';
 import { padTo64 } from '@/ethers/util';
+import type { Token } from './types';
+import { useLoginStore } from './login';
 
 export const useVerifyStore = defineStore('verifySig', () => {
-    const chainNumber = 3;
+    let { chainLength, chainNumber } = useLoginStore();
 
     // State
     const γ_string = 'c5a39eef19d5ae97aa0721850debfaed4982061404cb4325424dd8023e178917';
@@ -20,6 +21,16 @@ export const useVerifyStore = defineStore('verifySig', () => {
     const chain0 = reactive({ t_hash: '', t: '' });
     const chain1 = reactive({ t_hash: '', t: '' });
     const chain2 = reactive({ t_hash: '', t: '' });
+
+    // 中间token
+    let intermediateToken = reactive<string[][]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => {
+                // 每个子数组长度为 chainLength，初始值为 ''
+                return Array(chainLength).fill('');
+            })
+    );
 
     // save token
     let tokens = reactive<Token[]>([]);
@@ -90,6 +101,7 @@ export const useVerifyStore = defineStore('verifySig', () => {
         chain2,
         writeTHash,
         tokens,
-        verifySigFunc
+        verifySigFunc,
+        intermediateToken
     };
 });

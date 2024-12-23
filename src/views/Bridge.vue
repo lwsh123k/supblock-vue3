@@ -118,7 +118,7 @@ async function uploadHashAndListen() {
     // 额外判断, 防止误点, 判断对方是否已经上传hash 或者 已经上传过随机数
     if (!dataFromApplicant[step]?.hash || dataToApplicant[step]?.isUpload) return;
 
-    let { key: privateKey, address: addressB } = allAccountInfo.anonymousAccount;
+    let { key: privateKey, address: addressB } = allAccountInfo.realNameAccount; // 使用实名账户进行公平随机数生成
     let addressA = dataFromApplicant[step].from;
 
     // 创建合约实例
@@ -217,7 +217,7 @@ async function uploadHashAndListen() {
 async function uploadRandomNum() {
     try {
         let step = activeStep.value;
-        let { key: privateKey } = allAccountInfo.anonymousAccount;
+        let { key: privateKey } = allAccountInfo.realNameAccount; // 使用实名账户进行公平随机数生成
 
         // 创建合约实例
         const readOnlyFair = await getFairIntGen();
@@ -256,7 +256,7 @@ watchEffect(async () => {
         ) {
             try {
                 // 创建合约实例
-                let { key: privateKey, address: myAddress } = allAccountInfo.anonymousAccount;
+                let { key: privateKey, address: myAddress } = allAccountInfo.realNameAccount; // 使用实名账户进行公平随机数生成
                 const readOnlyFair = await getFairIntGen();
                 const wallet = new Wallet(privateKey, provider);
                 let writeFair = readOnlyFair.connect(wallet);
@@ -291,7 +291,7 @@ watch(
         // console.log('watch'); // watch先于computed执行
         activeStep.value = length - 1; // update to show latest data
         await uploadHashAndListen();
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // await new Promise((resolve) => setTimeout(resolve, 1500));
         await uploadRandomNum();
     }
 );

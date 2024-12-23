@@ -25,7 +25,7 @@
                         <span v-else>{{
                             'relay ' +
                             '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' +
-                            `(${relays[activeStep].anonymousAccount ? processLongString(relays[activeStep].anonymousAccount) : 'wait for selection'})`
+                            `(${relays[activeStep].realNameAccount ? processLongString(relays[activeStep].realNameAccount) : 'wait for selection'})`
                         }}</span>
                     </template>
                 </el-table-column>
@@ -169,10 +169,10 @@ async function uploadHashAndListen() {
     if (activeStep.value != currentStep) return;
     let step = currentStep;
     resetCurrentStep(datas, step);
-    // applicant: temp account, relay: anonymous account
+    // applicant: temp account, relay:real name account
     let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
-    let addressB = relays[step].anonymousAccount;
-    console.log(`applicant interacting with ${addressB}`);
+    let addressB = relays[step].realNameAccount;
+    console.log(`hash upload. applicant: ${addressA}, real name relay: ${addressB}`);
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();
     let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
@@ -295,7 +295,7 @@ async function uploadRandomNum() {
     try {
         // 选择使用哪个账号上传hash, 和谁交互
         let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
-        let addressB = relays[step].anonymousAccount;
+        let addressB = relays[step].realNameAccount; // 与relay实名账户进行公平随机数生成
 
         // 创建合约实例
         const readOnlyFair = await getFairIntGen();
@@ -343,7 +343,7 @@ watchEffect(async () => {
                 console.log('随机数错误');
                 // applicant: temp account, relay: anonymous account
                 let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[i];
-                let addressB = relays[i].anonymousAccount;
+                let addressB = relays[i].realNameAccount; // 与relay实名账户进行公平随机数生成
                 const readOnlyFair = await getFairIntGen();
                 const wallet = new Wallet(privateKey, provider);
                 let writeFair = readOnlyFair.connect(wallet);
@@ -364,9 +364,9 @@ watchEffect(async () => {
                 let nextStep = i + 1;
                 await setNextRelayRealnameInfo(chainId, nextStep, niReuploaded, 'event listening B');
             } else {
-                let nextIndex = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99;
+                let selectedNum = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99;
                 let nextStep = i + 1;
-                await setNextRelayRealnameInfo(chainId, nextStep, nextIndex, 'event listening B');
+                await setNextRelayRealnameInfo(chainId, nextStep, selectedNum, 'event listening B');
                 console.log('随机数正确 ');
             }
 
@@ -384,7 +384,7 @@ function processLongString(str: string, startLength = 5, endLength = 3) {
     return str;
 }
 
-// display next relay info
+// 展示选出的随机数
 const nextRelayMessage = computed(() => {
     let step = activeStep.value;
 

@@ -10,6 +10,7 @@ export type AppToRelayData = {
     b: null | number;
     c: null | string;
     l: number; // 比PreToNextRelayData中l大一
+    token?: string;
     chainIndex: number;
 };
 
@@ -35,12 +36,12 @@ export type PreToNextRelayData = {
     l: number;
 };
 
-export type RelayResDate = {
-    from: string;
-    to: string;
-    nextRelayAnonymousAccount: string;
+export type RelayResData = {
+    from: string; // relay anonymous account
+    to: string; // applicant temp account
+    nextRelayRealnameAccount: string; // relay要用的实名账户
     token: string; // token + c
-    appToRelayDataHash: string; // app给relay发送的数据的hash
+    // appToRelayDataHash: string; // app给relay发送的数据的hash, 作为relay对app数据的回应, 改为显式的放到event种
     chainIndex: number;
 };
 

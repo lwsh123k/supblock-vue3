@@ -7,14 +7,17 @@ import { addHexAndMod, getDecryptData, getEncryptData } from '../util';
 // 根据当前relay和applicant找到发送的数据
 export async function getPre2NextData(
     currentApplicantTemp: string,
-    currentRelayAnonymousAccount: string,
+    currentRelayRealnameAccount: string,
     nextRelayAccount: string,
     nextRelayPubkey: string
 ) {
     // pre applicant -> current: 数据包含下一次要用的账号, 即 currentApplicantTemp, 所以遍历找到数据
     let expectedData: CombinedData | null = null;
     for (const [key, value] of relayReceivedData) {
-        if (value.appToRelayData?.appTempAccount === currentApplicantTemp) expectedData = value;
+        if (value.appToRelayData?.appTempAccount === currentApplicantTemp) {
+            expectedData = value;
+            break;
+        }
     }
 
     // data not found
@@ -38,10 +41,10 @@ export async function getPre2NextData(
     // let currentApplicantTempPubkey = expectedData.appToRelayData?.appTempAccountPubkey; // 收到的appTempAccount就是当前轮对应的applicant交互账户
     // let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
     let processedData = {
-        from: currentRelayAnonymousAccount,
+        from: currentRelayRealnameAccount,
         to: nextRelayAccount,
         preAppTempAccount: currentApplicantTemp,
-        preRelayAccount: currentRelayAnonymousAccount,
+        preRelayAccount: currentRelayRealnameAccount,
         hf: expectedData?.appToRelayData?.hf,
         hb: expectedData?.appToRelayData?.hb,
         b: expectedData?.appToRelayData?.b,

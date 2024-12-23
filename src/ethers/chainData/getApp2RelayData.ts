@@ -9,8 +9,10 @@ import { useVerifyStore } from '@/stores/modules/verifySig';
 export function getApp2RelayData(chainIndex: number, relayNumber: number) {
     const loginStore = useLoginStore();
     const { chainLength, allAccountInfo, validatorAccount, sendInfo, tempAccountInfo } = loginStore;
+    const { intermediateToken } = useVerifyStore();
     let oneChainSendInfo = sendInfo[chainIndex],
-        oneChainTempAccountInfo = tempAccountInfo[chainIndex];
+        oneChainTempAccountInfo = tempAccountInfo[chainIndex],
+        oneChainToken = intermediateToken[chainIndex];
     let data: AppToRelayData = {
         from: null,
         to: null,
@@ -41,6 +43,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.b = oneChainSendInfo.b[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
+        data.token = oneChainToken[relayNumber];
     } else if (relayNumber === chainLength) {
         let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
@@ -50,6 +53,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
+        data.token = oneChainToken[relayNumber];
     } else if (relayNumber === chainLength + 1) {
         let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;

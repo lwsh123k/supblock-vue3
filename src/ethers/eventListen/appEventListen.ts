@@ -46,10 +46,10 @@ export async function listenRelayRes(appTempAccounts: string[]) {
                 `relay -> app(relay send realname account). hash verification result: ${hashResult}, received hash: ${dataHash}, computed hash: ${computedHash}`
             );
 
-            // update next relay's real name account, save token
-            let { from, to, nextRelayRealnameAccount, token } = decodedData;
-            let intermediateToken = toRef(useVerifyStore(), 'intermediateToken');
-            intermediateToken.value[chainIndex][relayIndex + 1] = token;
+            // update next relay's real name account, save encrypted token
+            let { from, to, nextRelayRealnameAccount, encrypedTokenOrHash } = decodedData;
+            let allCheinTokenHash = toRef(useVerifyStore(), 'allCheinTokenHash');
+            allCheinTokenHash.value[chainIndex][relayIndex + 1] = encrypedTokenOrHash;
 
             console.log(
                 `relay -> app(update next relay real name account in ethersjs), chain index: ${chainIndex}, next relay index: ${relayIndex + 1}, next relay real name account: ${nextRelayRealnameAccount}`

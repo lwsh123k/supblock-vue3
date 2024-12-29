@@ -172,7 +172,7 @@ async function uploadHashAndListen() {
     // applicant: temp account, relay:real name account
     let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[step];
     let addressB = relays[step].realNameAccount;
-    console.log(`hash upload. applicant: ${addressA}, real name relay: ${addressB}`);
+    console.log(`hash upload. applicant account: ${addressA}, relay real name account: ${addressB}`);
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();
     let writeFair = readOnlyFair.connect(new Wallet(privateKey, provider));
@@ -206,9 +206,7 @@ async function uploadHashAndListen() {
     await send2Extension(addressA, addressB, hash, b, chainId, step);
 
     //上传hash
-    await writeFair.setReqHash(addressB, hash);
-    console.log('hash upload success:', hash);
-    datas[step][0].status = 'hash已上传';
+    let hashUploadPromise = writeFair.setReqHash(addressB, hash);
 
     // 开启监听
     // 使用封装的函数
@@ -225,7 +223,7 @@ async function uploadHashAndListen() {
             datas[step][1].hash = resHash.infoHashB;
             // 如果先监听到随机数上传就取消设置该字段
             if (datas[step][1].status !== '随机数已上传') datas[step][1].status = 'hash已上传';
-            // ??
+            console.log('监听到relay hash', resHash);
         })
         .catch((error) => {
             // 防止hash没监听到, 但随机数监听到
@@ -239,13 +237,14 @@ async function uploadHashAndListen() {
     numPromise
         .then((resNum) => {
             let { ni, ri, t } = resNum;
+            datas[step][1].hash = resNum.hashB;
             datas[step][1].randomNumBefore = ni;
             datas[step][1].randomNumAfter = ni;
             datas[step][1].r = ri;
             datas[step][1].executionTime = t.toString();
             datas[step][1].status = '随机数已上传';
             datas[step][1].randomText = ni.toString();
-            console.log('监听到relay随机数');
+            console.log('监听到relay随机数', resNum);
         })
         .catch(async (error: Error) => {
             // 超时 && 自己已上传 && 自己上传的是对的
@@ -282,6 +281,10 @@ async function uploadHashAndListen() {
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
         });
+
+    await hashUploadPromise; // 等待hash上传完成
+    console.log('hash upload success:', hash);
+    datas[step][0].status = 'hash已上传';
 }
 
 // 随机数上传
@@ -321,6 +324,7 @@ watchEffect(async () => {
         if (
             datas[i][0].status === '随机数已上传' &&
             datas[i][1].status === '随机数已上传' &&
+            !datas[i][1].hash &&
             datas[i][0].isUpload === true &&
             datas[i][0].randomNumBefore === datas[i][0].randomNumAfter &&
             datas[i][0].isReupload === false &&
@@ -328,7 +332,7 @@ watchEffect(async () => {
         ) {
             console.log('random num check...');
             // fair integer check
-            const hash = getHash(
+            let hash = getHash(
                 datas[i][1].randomNumBefore,
                 Number(datas[i][0].executionTime),
                 Number(datas[i][1].executionTime),
@@ -340,7 +344,14 @@ watchEffect(async () => {
 
             // 判断是否重传
             if (result === false) {
-                console.log('随机数错误');
+                console.log('随机数错误', 'data info:', {
+                    'hash received': datas[i][1].hash,
+                    'hash calculated': hash,
+                    'relay random num': datas[i][1].randomNumBefore,
+                    'appliacnt exec time': Number(datas[i][0].executionTime),
+                    'relay exec time': Number(datas[i][1].executionTime),
+                    'relay r': datas[i][1].r
+                });
                 // applicant: temp account, relay: anonymous account
                 let { key: privateKey, address: addressA } = oneChainTempAccount.selectedAccount[i];
                 let addressB = relays[i].realNameAccount; // 与relay实名账户进行公平随机数生成
@@ -352,7 +363,7 @@ watchEffect(async () => {
                 let {
                     ni: niReuploaded,
                     ri,
-                    hash
+                    hash: regeneratedHash
                 } = getRandom(Number(datas[i][0].executionTime), Number(datas[i][1].executionTime));
                 datas[i][0].randomNumAfter = niReuploaded;
                 await writeFair.reuploadNum(addressB, datas[i][0].dataIndex as number, 0, niReuploaded, ri);

@@ -22,8 +22,8 @@ export const useVerifyStore = defineStore('verifySig', () => {
     const chain1 = reactive({ t_hash: '', t: '' });
     const chain2 = reactive({ t_hash: '', t: '' });
 
-    // 中间token
-    let intermediateToken = reactive<string[][]>(
+    // 中间的token hash
+    let allCheinTokenHash = reactive<string[][]>(
         Array(chainNumber)
             .fill(null)
             .map(() => {
@@ -32,7 +32,7 @@ export const useVerifyStore = defineStore('verifySig', () => {
             })
     );
 
-    // save token
+    // 开始和结束的token
     let tokens = reactive<Token[]>([]);
     for (let i = 0; i < chainNumber; i++) {
         tokens.push({
@@ -102,6 +102,6 @@ export const useVerifyStore = defineStore('verifySig', () => {
         writeTHash,
         tokens,
         verifySigFunc,
-        intermediateToken
+        allCheinTokenHash
     };
 });

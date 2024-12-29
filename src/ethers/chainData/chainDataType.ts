@@ -10,7 +10,7 @@ export type AppToRelayData = {
     b: null | number;
     c: null | string;
     l: number; // 比PreToNextRelayData中l大一
-    token?: string;
+    encrypedTokenOrHash?: string; // 加密后的token, applicant不能直接获取, 只是转发数据
     chainIndex: number;
 };
 
@@ -40,7 +40,7 @@ export type RelayResData = {
     from: string; // relay anonymous account
     to: string; // applicant temp account
     nextRelayRealnameAccount: string; // relay要用的实名账户
-    token: string; // token + c
+    encrypedTokenOrHash: string; // 发送给applicant, applicant转发给下一个relay, 下一个relay对比数据
     // appToRelayDataHash: string; // app给relay发送的数据的hash, 作为relay对app数据的回应, 改为显式的放到event种
     chainIndex: number;
 };

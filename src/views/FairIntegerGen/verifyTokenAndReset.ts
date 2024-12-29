@@ -2,14 +2,17 @@ import { getAccountInfo } from '@/api';
 import { verifyWrongData } from '@/api/verifyWrongData';
 import { getApp2ReceivedData, getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
 import { appSendConfirmation } from '@/socket/applicantEvent';
-import { useApplicantStore, type RelayAccount } from '@/stores/modules/applicant';
+import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 import { ElMessage } from 'element-plus';
 import { storeToRefs } from 'pinia';
 import { toRef } from 'vue';
 
-// whether reset
+/**
+ * 验证错误数据
+ * @param chainId 第几条连, 0, 1, 2
+ */
 export async function verifyTokenAndReset(chainId: number) {
     const tokens = toRef(useVerifyStore(), 'tokens');
     let { chainLength } = useLoginStore();

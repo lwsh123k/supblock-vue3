@@ -120,6 +120,7 @@ async function uploadHashAndListen() {
 
     let { key: privateKey, address: addressB } = allAccountInfo.realNameAccount; // 使用实名账户进行公平随机数生成
     let addressA = dataFromApplicant[step].from;
+    console.log(`hash upload. relay real name account: ${addressB}, applicant account: ${addressA}`);
 
     // 创建合约实例
     const readOnlyFair = await getFairIntGen();

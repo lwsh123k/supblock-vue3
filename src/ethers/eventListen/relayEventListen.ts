@@ -13,9 +13,6 @@ import {
 } from '../chainData/chainDataType';
 import { relaySendFinalData } from '@/socket/relayEvent';
 import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
-import { triggerEvents } from './autoUpload';
-import { toRef } from 'vue';
-import type { BigIntOptions } from 'fs';
 import { provider } from '../provider';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
@@ -31,7 +28,7 @@ export async function backendListen() {
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, realNameAddress);
-    fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, uploadTime, index) => {
+    fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, index) => {
         // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
         console.log('app -> relay: hash upload event detected');
         console.log('data: ', {
@@ -40,7 +37,6 @@ export async function backendListen() {
             infoHash,
             tA: tA.toNumber(),
             tB: tB.toNumber(),
-            uploadTime: uploadTime.toString(),
             index: index.toString()
         });
         dataFromApplicant.push({
@@ -299,19 +295,24 @@ function verifyData(data: CombinedData) {
     // 链的长度为3, chain length = 5
     if (l === 1)
         console.log(
-            `no need to verify token, when l = 1. appliacnt token: ${data.appToRelayData?.token}, pre relay token: ${data.preToNextRelayData?.t}`
+            `no need to verify token, when l = 1. appliacnt token hash: ${data.appToRelayData?.encrypedTokenOrHash}, pre relay token: ${data.preToNextRelayData?.t}`
         );
     else if (l >= 2 && l <= chainLength - 2) {
-        let tokenFromApplicant = data.appToRelayData.token;
+        let tokenHashFromApplicant = data.appToRelayData.encrypedTokenOrHash;
         let tokenFromPreRelay = data.preToNextRelayData.t;
-        if (tokenFromApplicant !== tokenFromPreRelay) {
+        if (tokenFromPreRelay == null) {
+            console.log(`token from pre relay is null or undefined, value: ${tokenFromPreRelay}`);
+            return;
+        }
+        let tokenHashFromPreRelay = keccak256(ensure0xPrefix(tokenFromPreRelay));
+        if (tokenHashFromApplicant !== tokenHashFromPreRelay) {
             console.log(
-                `token is different. appliacnt token: ${tokenFromApplicant}, pre relay token: ${tokenFromPreRelay}`
+                `token is different. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
             );
             tokenVerifyResult = false;
         }
         console.log(
-            `verify token success. appliacnt token: ${tokenFromApplicant}, pre relay token: ${tokenFromPreRelay}`
+            `verify token success. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
         );
     }
     // 数据不够, 只能验证正向hash

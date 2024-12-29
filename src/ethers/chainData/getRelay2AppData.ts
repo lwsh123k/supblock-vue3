@@ -3,13 +3,14 @@ import { relayReceivedData, type RelayResData } from './chainDataType';
 import { getStoreData } from '../contract';
 import { provider } from '../provider';
 import { Wallet } from 'ethers';
-import { addHexAndMod, ensure0xPrefix, getEncryptData, keccak256 } from '../util';
+import { addHexAndMod, ensure0xPrefix, getEncryptData, getHash, keccak256 } from '../util';
 import { useSocketStore } from '@/stores/modules/socket';
+import { computePublicKey } from 'ethers/lib/utils';
 
 // next relay通过socket和区块链, 使用匿名账户回复pre applicant account, 要使用的实名账户
 export async function sendNextRelay2AppData(preApplicantTempAccount: string, applicantDataHash: string) {
     const { allAccountInfo } = useLoginStore();
-    let { key: privateKey, address: realNameAddress } = allAccountInfo.realNameAccount;
+    let { key: realnamePrivateKey, address: realNameAddress } = allAccountInfo.realNameAccount;
     let { key: anonymousAccountKey, address: anonymousAddress } = allAccountInfo.anonymousAccount;
     let { socketMap } = useSocketStore();
     let anonymousSocket = socketMap.get(anonymousAddress);
@@ -31,12 +32,18 @@ export async function sendNextRelay2AppData(preApplicantTempAccount: string, app
         return;
     }
     let tokenAddc = addHexAndMod(token, c);
-    console.log(`next relay -> applicant, t: ${token}, c: ${c}, token + c: ${tokenAddc}`);
+    tokenAddc = ensure0xPrefix(tokenAddc);
+    let realnamePublicKey = computePublicKey(realnamePrivateKey);
+    let encrypedToken = await getEncryptData(realnamePublicKey, tokenAddc); // 使用自己的实名账户公钥加密
+    let encrypedTokenOrHash = keccak256(tokenAddc); // 加密和取hash都可以
+    console.log(
+        `next relay -> applicant, t: ${token}, c: ${c}, token + c: ${tokenAddc}, token hash: ${encrypedTokenOrHash}`
+    );
     let data: RelayResData = {
         from: anonymousAddress,
         to: preApplicantTempAccount,
         nextRelayRealnameAccount: realNameAddress,
-        token: tokenAddc,
+        encrypedTokenOrHash: encrypedTokenOrHash,
         chainIndex
     };
     let encryptedData = await getEncryptData(preApplicantTempPubkey, data);

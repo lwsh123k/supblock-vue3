@@ -194,7 +194,7 @@ export function appRecevieRelayData(socket: Socket) {
             applicantDataHash: string;
             chainIndex: number;
         }) => {
-            let { from, to, nextRelayRealnameAccount, token } = data;
+            let { from, to, nextRelayRealnameAccount, encrypedToken } = data;
             console.log(
                 `update relay anonymous account in socket, chain index: ${chainIndex}, next relay real name account: ${nextRelayRealnameAccount}`
             );
@@ -202,7 +202,7 @@ export function appRecevieRelayData(socket: Socket) {
             // 更新next relay real name account和token
             // relayIndex.value[chainIndex]在extension通知applicant新页面打开时, 值已经+1
             let intermediateToken = toRef(useVerifyStore(), 'intermediateToken');
-            intermediateToken.value[chainIndex][relayIndex.value[chainIndex]] = token;
+            intermediateToken.value[chainIndex][relayIndex.value[chainIndex]] = encrypedToken;
             relays[chainIndex][relayIndex.value[chainIndex]].realNameAccount = nextRelayRealnameAccount;
         }
     );

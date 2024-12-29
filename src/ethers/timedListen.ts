@@ -14,9 +14,15 @@ type HashResult = {
     infoHashB: string;
     tA: string;
     tB: string;
-    uploadTime: string;
     index: string;
 };
+/**
+ *
+ * @param addressA applicant address
+ * @param addressB relay address
+ * @param timeout 超时事件, 默认为40s
+ * @returns relay random info
+ */
 export async function listenResHash(
     addressA: string,
     addressB: string,
@@ -28,7 +34,7 @@ export async function listenResHash(
         let filter = fairIntGen.filters.ResHashUpload(addressB, addressA),
             timeoutId: NodeJS.Timeout;
         // 存储监听调用函数的引用
-        listenser = async (from, to, infoHash, tA, tB, uploadTime, index) => {
+        listenser = async (from, to, infoHash, tA, tB, index) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
@@ -36,7 +42,6 @@ export async function listenResHash(
                 infoHashB: infoHash,
                 tA: tA.toString(),
                 tB: tB.toString(),
-                uploadTime: uploadTime.toString(),
                 index: index.toString()
             });
         };
@@ -52,7 +57,7 @@ export async function listenResHash(
 }
 
 // 请求者使用, 监听响应者的随机数 (可以停止的promise)
-type NumResult = { from: string; to: string; ni: number; ri: string; t: number; uploadTime: string };
+type NumResult = { from: string; to: string; ni: number; ri: string; t: number; hashA: string; hashB: string };
 export async function stopableListenResNum(
     reqAddress: string,
     resAddress: string,
@@ -67,15 +72,16 @@ export async function stopableListenResNum(
     const p = new Promise<NumResult>((resolve, reject) => {
         rejectFunc = reject;
         // 存储引用
-        callback = async (from, to, ni, ri, t, numHash, uploadTime) => {
+        callback = async (from, to, ni, ri, tA, tB, hashA, hashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
                 to,
                 ni: ni.toNumber(),
                 ri: ri.toHexString(),
-                t: t.toNumber(),
-                uploadTime: uploadTime.toString()
+                t: tB.toNumber(),
+                hashA,
+                hashB
             });
         };
 
@@ -105,15 +111,16 @@ export async function listenReqNum(
     let callback: TypedListener<ReqInfoUploadEvent>, timeoutId: NodeJS.Timeout;
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.ReqInfoUpload(reqAddress, resAddress);
-        callback = async (from, to, ni, ri, t, numHash, uploadTime) => {
+        callback = async (from, to, ni, ri, tA, tB, hashA, hashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from: from,
                 to: to,
                 ni: ni.toNumber(),
                 ri: ri.toHexString(),
-                t: t.toNumber(),
-                uploadTime: uploadTime.toString()
+                t: tA.toNumber(),
+                hashA,
+                hashB
             });
         };
 
@@ -126,7 +133,7 @@ export async function listenReqNum(
 }
 // relay重新上传的监听, 确定下一个随机数
 // 从hash上传就开始监听: 时间: 在原来的基础上+30s   可以由hash上传停止  num正确可以停止
-type ReuploadResult = { from: string; to: string; ni: number; ri: string; hashB: string; uploadTime: string };
+type ReuploadResult = { from: string; to: string; ni: number; ri: string; hashB: string };
 export async function stopableListenResReupload(
     reqAddress: string,
     resAddress: string,
@@ -144,15 +151,14 @@ export async function stopableListenResReupload(
             fairIntGen.off(resFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload random num'));
         }, timeout);
-        callback = async (from, to, ni, ri, numHash, uploadTime) => {
+        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
                 to,
                 ni: ni.toNumber(),
                 ri: ri.toHexString(),
-                hashB: numHash.toString(),
-                uploadTime: uploadTime.toString()
+                hashB: originalHashB.toString()
             });
         };
         fairIntGen.once(resFilter, callback);

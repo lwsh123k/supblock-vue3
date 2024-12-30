@@ -75,15 +75,13 @@ export function bindExtension(socket: Socket) {
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
 
             // determine if next relay is last user relay
-            let lastUserRelay = false;
             if (nextRelayIndex === chainLength) {
-                lastUserRelay = true;
                 console.log('last user relay');
             }
             // get data hash and upload
             let hashResult = keccak256(JSON.stringify(data));
             hashResult = ensure0xPrefix(hashResult);
-            await writeStoreData.setApp2Relay(relayAddress, encryptedData, hashResult, lastUserRelay);
+            await writeStoreData.setApp2Relay(relayAddress, encryptedData, hashResult);
             console.log('app -> next relay 数据上链完成');
             console.log(
                 `app -> next relay: app temp account: ${addressA}, next relay anonymous address: ${relayAddress}, data:`,
@@ -110,13 +108,14 @@ export function bindExtension(socket: Socket) {
             let { key: privateKey, address: preRelayRealnameAccount } = allAccountInfo.realNameAccount;
             let { address: nextRelayAnonymousAddress, publicKey: nextRelayAnonymousPubkey } =
                 await getAccountInfoByContract(blindedFairIntNum);
-            let data = await getPre2NextData(
+            let { processedData, tokenAddc } = await getPre2NextData(
                 applicantAddress,
                 preRelayRealnameAccount,
                 nextRelayAnonymousAddress,
                 nextRelayAnonymousPubkey
             );
-            // use fake data
+
+            // use fake data, 将tokenAddc改为3333333....
             let relayStore = useRelayStore();
             let useFakeData = toRef(relayStore, 'useFakeData');
             let fakeDataTime = toRef(relayStore, 'fakeDataTime');
@@ -124,18 +123,26 @@ export function bindExtension(socket: Socket) {
             if (fakeDataTime.value === 1) useFakeData.value = false;
             // 判断是否使用伪造数据
             if (useFakeData.value === true && fakeDataTime.value === 0) {
-                data.t = '3333333333333333333333333333333333333333333333333333333333334455';
+                tokenAddc = '3333333333333333333333333333333333333333333333333333333333334455';
                 // only use fake data once
                 fakeDataTime.value++;
             }
-            let encryptedData = await getEncryptData(nextRelayAnonymousPubkey, data);
-            let preRelayDataHash = keccak256(JSON.stringify(data));
-            preRelayDataHash = ensure0xPrefix(preRelayDataHash);
+
+            // 将 pre to next data 和 tokenAddc 加密
+            let encryptedPre2NextData = await getEncryptData(nextRelayAnonymousPubkey, processedData);
+            let encrypedToken = await getEncryptData(nextRelayAnonymousPubkey, tokenAddc);
+            let pre2NextDataHash = keccak256(JSON.stringify(processedData));
+            pre2NextDataHash = ensure0xPrefix(pre2NextDataHash);
 
             // 当前relay使用anonymous account
             let readOnlyStoreData = await getStoreData();
             let writeStoreData = readOnlyStoreData.connect(new Wallet(privateKey, provider));
-            await writeStoreData.setPre2Next(nextRelayAnonymousAddress, encryptedData, preRelayDataHash);
+            await writeStoreData.setPre2Next(
+                nextRelayAnonymousAddress,
+                encryptedPre2NextData,
+                encrypedToken,
+                pre2NextDataHash
+            );
             let blockNumber = await provider.getBlockNumber();
             console.log('pre relay -> next relay 数据上链完成', 'block number:', blockNumber);
             console.log(
@@ -144,7 +151,9 @@ export function bindExtension(socket: Socket) {
                 'next relay anonymous account:',
                 nextRelayAnonymousAddress,
                 'data:',
-                data
+                processedData,
+                'token add c: ',
+                tokenAddc
             );
         } catch (error) {
             console.log(error);

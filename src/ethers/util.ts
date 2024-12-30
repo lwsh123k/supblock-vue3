@@ -46,9 +46,12 @@ export function getRandom(tA: number, tB: number) {
     return { ni, ri, hash };
 }
 
-// 使用对方公钥加密
-// 加密: 传入对象, 将对象 -> json字符串 -> 加密对象 -> 字符串
-// 返回的16进制加上0x前缀(grpc: binding number, r)
+/**
+ * 用接收方公钥加密数据
+ * @param publicKey 接收方公钥
+ * @param data 传入对象, 将对象 -> json字符串 -> 加密对象 -> 字符串
+ * @returns 0x + 16进制加密数据(grpc: binding number, r)
+ */
 export async function getEncryptData(publicKey: string, data: any) {
     // publicKey: 不带0x
     const removedPrefixpublicKey = publicKey.startsWith('0x') ? publicKey.slice(2) : publicKey;
@@ -57,8 +60,12 @@ export async function getEncryptData(publicKey: string, data: any) {
     return '0x' + cipher.stringify(encryptedData);
 }
 
-// 使用私钥解密
-// 解密: 字符串 -> 解密对象 -> json对象 -> 对象
+/**
+ * 使用私钥解密: 字符串 -> 解密对象 -> json对象 -> 对象
+ * @param privateKey 私钥
+ * @param encryptedData 要解密的数据, 带不带0x前缀都可以
+ * @returns 原始数据
+ */
 export async function getDecryptData(privateKey: string, encryptedData: string) {
     // privatekay: 带0x前缀, encryptedData: 不带0x前缀
     privateKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;

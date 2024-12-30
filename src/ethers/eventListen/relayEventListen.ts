@@ -83,15 +83,15 @@ export async function backendListen() {
     const storeData = await getStoreData();
     let app2Relayfilter = storeData.filters.App2RelayEvent(null, anonymousAddress);
     // 监听未来的event
-    storeData.on(app2Relayfilter, async (from, relay, data, dataHash, dataIndex, lastRelay) => {
-        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'future listening');
+    storeData.on(app2Relayfilter, async (from, relay, data, dataHash) => {
+        await processApp2RelayEvent(from, relay, data, dataHash, 'future listening');
     });
 
     // next relay listening: current relay -> next relay, using real name account
     let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, anonymousAddress);
     // 监听未来的event
-    storeData.on(pre2Nextfilter, async (from, relay, data, dataHash, dataIndex) => {
-        await processPre2NextEvent(from, relay, data, dataIndex, 'future listening');
+    storeData.on(pre2Nextfilter, async (from, relay, data, encryptedToken, dataHash) => {
+        await processPre2NextEvent(from, relay, data, encryptedToken, dataHash, 'future listening');
     });
 
     // 当前block向前20个, 避免错过
@@ -100,15 +100,15 @@ export async function backendListen() {
     console.log('app to relay past event:', pastEvents1);
     // app to relay past event
     for (const event of pastEvents1) {
-        const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
-        await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'past listening');
+        const { from, relay, data, dataHash } = event.args;
+        await processApp2RelayEvent(from, relay, data, dataHash, 'past listening');
     }
     // pre relay to next relay past event
     const pastEvents2 = await storeData.queryFilter(pre2Nextfilter, fromBlock, currentBlockNumber);
     console.log('pre to next relay past event:', pastEvents2);
     for (const event of pastEvents2) {
-        const { from, relay, data, dataIndex } = event.args;
-        await processPre2NextEvent(from, relay, data, dataIndex, 'past listening');
+        const { from, relay, data, encryptedToken, dataHash } = event.args;
+        await processPre2NextEvent(from, relay, data, encryptedToken, dataHash, 'past listening');
     }
 
     // 更加保险的做法, 监听current block +0, +1, +2区块
@@ -120,14 +120,14 @@ export async function backendListen() {
         const events1 = await storeData.queryFilter(app2Relayfilter, blockNumber, blockNumber);
         console.log('app to relay current event:', events1);
         for (const event of events1) {
-            const { from, relay, data, dataHash, dataIndex, lastRelay } = event.args;
-            await processApp2RelayEvent(from, relay, data, dataHash, dataIndex, lastRelay, 'current listening');
+            const { from, relay, data, dataHash } = event.args;
+            await processApp2RelayEvent(from, relay, data, dataHash, 'current listening');
         }
         const events2 = await storeData.queryFilter(pre2Nextfilter, blockNumber, blockNumber);
         console.log('pre to next relay current event:', events2);
         for (const event of events2) {
-            const { from, relay, data, dataIndex } = event.args;
-            await processPre2NextEvent(from, relay, data, dataIndex, 'current listening');
+            const { from, relay, data, encryptedToken, dataHash } = event.args;
+            await processPre2NextEvent(from, relay, data, encryptedToken, dataHash, 'current listening');
         }
 
         processedBlockCount++;
@@ -149,8 +149,6 @@ async function processApp2RelayEvent(
     relay: string,
     data: string,
     dataHash: string,
-    dataIndex: BigNumber,
-    lastRelay: boolean,
     place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到app to next relay消息 in ${place}, data:`);
@@ -178,19 +176,22 @@ async function processPre2NextEvent(
     from: string,
     relay: string,
     data: string,
-    dataIndex: BigNumber,
+    encryptedToken: string,
+    dataHash: string,
     place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到pre relay to next relay消息 in ${place}, data:`);
     const { allAccountInfo } = useLoginStore();
     // 收到的数据中包含pre applicant temp account
     let decodedData: PreToNextRelayData = await getDecryptData(allAccountInfo.anonymousAccount.key, data);
+    let decodedToken = await getDecryptData(allAccountInfo.anonymousAccount.key, encryptedToken);
+    decodedData.t = decodedToken; // 赋值到解码数据中, 与之前一致, 方便后续调用
     let { from: from1, to, preAppTempAccount, preRelayAccount, hf, hb, b, n, t } = decodedData;
     console.log(decodedData);
 
     // verify and send back
     if (!preAppTempAccount) throw new Error("pre applicant temp account does't exist");
-    await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData);
+    await checkPreDataAndRes(preAppTempAccount, 'pre relay account', decodedData, dataHash);
 }
 
 // 检查l大1, 正向hash, 申请者发送的token和relay接收的是否一致
@@ -290,31 +291,31 @@ function verifyData(data: CombinedData) {
 
     // 验证token
     let tokenVerifyResult = true;
-    let { chainLength } = useLoginStore();
-    let l = data.appToRelayData.l;
-    // 链的长度为3, chain length = 5
-    if (l === 1)
-        console.log(
-            `no need to verify token, when l = 1. appliacnt token hash: ${data.appToRelayData?.encrypedTokenOrHash}, pre relay token: ${data.preToNextRelayData?.t}`
-        );
-    else if (l >= 2 && l <= chainLength - 2) {
-        let tokenHashFromApplicant = data.appToRelayData.encrypedTokenOrHash;
-        let tokenFromPreRelay = data.preToNextRelayData.t;
-        if (tokenFromPreRelay == null) {
-            console.log(`token from pre relay is null or undefined, value: ${tokenFromPreRelay}`);
-            return;
-        }
-        let tokenHashFromPreRelay = keccak256(ensure0xPrefix(tokenFromPreRelay));
-        if (tokenHashFromApplicant !== tokenHashFromPreRelay) {
-            console.log(
-                `token is different. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
-            );
-            tokenVerifyResult = false;
-        }
-        console.log(
-            `verify token success. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
-        );
-    }
+    // let { chainLength } = useLoginStore();
+    // let l = data.appToRelayData.l;
+    // // 链的长度为3, chain length = 5
+    // if (l === 1)
+    //     console.log(
+    //         `no need to verify token, when l = 1. appliacnt token hash: ${data.appToRelayData?.encrypedTokenOrHash}, pre relay token: ${data.preToNextRelayData?.t}`
+    //     );
+    // else if (l >= 2 && l <= chainLength - 2) {
+    //     let tokenHashFromApplicant = data.appToRelayData.encrypedTokenOrHash;
+    //     let tokenFromPreRelay = data.preToNextRelayData.t;
+    //     if (tokenFromPreRelay == null) {
+    //         console.log(`token from pre relay is null or undefined, value: ${tokenFromPreRelay}`);
+    //         return;
+    //     }
+    //     let tokenHashFromPreRelay = keccak256(ensure0xPrefix(tokenFromPreRelay));
+    //     if (tokenHashFromApplicant !== tokenHashFromPreRelay) {
+    //         console.log(
+    //             `token is different. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
+    //         );
+    //         tokenVerifyResult = false;
+    //     }
+    //     console.log(
+    //         `verify token success. appliacnt token hash: ${tokenHashFromApplicant}, pre relay token: ${tokenFromPreRelay}, pre relay token hash: ${tokenHashFromPreRelay}`
+    //     );
+    // }
     // 数据不够, 只能验证正向hash
     let hb = data.preToNextRelayData.hb,
         nextHb = data.appToRelayData.hb;

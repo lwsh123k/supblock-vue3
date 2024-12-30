@@ -34,16 +34,14 @@ export async function sendNextRelay2AppData(preApplicantTempAccount: string, app
     let tokenAddc = addHexAndMod(token, c);
     tokenAddc = ensure0xPrefix(tokenAddc);
     let realnamePublicKey = computePublicKey(realnamePrivateKey);
-    let encrypedToken = await getEncryptData(realnamePublicKey, tokenAddc); // 使用自己的实名账户公钥加密
-    let encrypedTokenOrHash = keccak256(tokenAddc); // 加密和取hash都可以
-    console.log(
-        `next relay -> applicant, t: ${token}, c: ${c}, token + c: ${tokenAddc}, token hash: ${encrypedTokenOrHash}`
-    );
+    // let encrypedToken = await getEncryptData(realnamePublicKey, tokenAddc); // 使用自己的实名账户公钥加密
+    // let encrypedTokenOrHash = keccak256(tokenAddc); // 加密和取hash都可以
+    console.log(`next relay -> applicant, t: ${token}, c: ${c}, token + c: ${tokenAddc}`);
     let data: RelayResData = {
         from: anonymousAddress,
         to: preApplicantTempAccount,
         nextRelayRealnameAccount: realNameAddress,
-        encrypedTokenOrHash: encrypedTokenOrHash,
+        // encrypedTokenOrHash: encrypedTokenOrHash,
         chainIndex
     };
     let encryptedData = await getEncryptData(preApplicantTempPubkey, data);
@@ -59,7 +57,7 @@ export async function sendNextRelay2AppData(preApplicantTempAccount: string, app
     let relayDataHash = keccak256(JSON.stringify(data));
     relayDataHash = ensure0xPrefix(relayDataHash);
     applicantDataHash = ensure0xPrefix(applicantDataHash);
-    await writeStoreData.setTempAccountHash(
+    await writeStoreData.setRelay2App(
         preApplicantTempAccount,
         encryptedData,
         relayDataHash,

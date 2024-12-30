@@ -1,38 +1,9 @@
 import { defineStore } from 'pinia';
 import { ref, computed, reactive, readonly } from 'vue';
+import type { AppToRelayData, RelayToAppData } from './types';
 
 // 用于接收发送方的请求
 export const useRelayStore = defineStore('relayStore', () => {
-    // 响应者接收到的数据
-    interface AppToRelayData {
-        role: string;
-        from: string;
-        to: string;
-        randomNumBefore: number | string | null;
-        randomText: number | string | null;
-        tA: number;
-        tB: number;
-        executionTime: number | string | null;
-        r: string | null;
-        hash: string;
-        status: string;
-        index: number;
-    }
-    interface RelayToAppData {
-        role: string;
-        randomNumBefore: number; // 首次上传的随机数
-        executionTime: number | string | null;
-        r: string | null;
-        hash: string;
-        status: string;
-        index: number | null;
-        randomNumAfter: number; //发生错误重传的随机数
-        randomText: string; // table展示上传错误, 如: 24 / 72
-        isUpload?: boolean;
-        isReupload?: boolean;
-        hasChecked?: boolean;
-    }
-    interface RelayData {}
     const dataFromApplicant = reactive<AppToRelayData[]>([]); // 记录随机数请求
     const dataToApplicant = reactive<Partial<RelayToAppData>[]>([]); // 记录随机数响应
     const dataFromRelay = null; // relay发来的信息

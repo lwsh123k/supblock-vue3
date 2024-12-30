@@ -10,28 +10,36 @@ import { useVerifyStore } from '@/stores/modules/verifySig';
 export async function listenRelayRes(appTempAccounts: string[]) {
     const storeData = await getStoreData();
     const { tempAccountInfo } = useLoginStore();
+    let { chainNumber, chainLength } = useLoginStore();
     let applicantStore = useApplicantStore();
     let relays = applicantStore.relays;
 
     let RelayResFilter = storeData.filters.RelayResEvidenceEvent(null, null);
     storeData.on(
         RelayResFilter,
-        async (relayAnonymousAccount, appTempAccount, data, dataHash, responseEvidence, chainIndex) => {
+        async (relayAnonymousAccount, appTempAccount, data, dataHash, app2RelayResEvidence, pre2NextResEvidence) => {
             // 过滤不是发给自己的
             if (!appTempAccounts.includes(appTempAccount)) return;
             // get app temp account private key
-            let specificChain = tempAccountInfo[chainIndex];
+
             let decodedData: RelayResData | null = null,
+                chainIndex: number = -1,
                 relayIndex: number = -1;
-            for (let i = 0; i < specificChain.selectedAccount.length; i++) {
-                let account = specificChain.selectedAccount[i];
-                try {
-                    let privateKey = account.key;
-                    decodedData = await getDecryptData(privateKey, data);
-                    relayIndex = i;
-                    break;
-                } catch (error) {}
+            // 既可以对比app2RelayResEvidence, 也可以尝试解码数据来获取chain index和relay index
+            for (let i = 0; i < chainNumber; i++) {
+                let specificChain = tempAccountInfo[i];
+                for (let j = 0; j < chainLength; j++) {
+                    let account = specificChain.selectedAccount[i];
+                    try {
+                        let privateKey = account.key;
+                        decodedData = await getDecryptData(privateKey, data);
+                        chainIndex = i;
+                        relayIndex = j;
+                        break;
+                    } catch (error) {}
+                }
             }
+
             if (decodedData === null || relayIndex === -1) {
                 console.log(`decode failed, chainid: ${chainIndex}`);
                 return;

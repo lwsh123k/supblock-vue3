@@ -4,8 +4,12 @@ import { ethers } from 'ethers';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 
-// applicant -> next relay data
-// use chainNum and relayNum to determine sending data
+/**
+ * 获取applicant -> next relay data
+ * @param chainIndex 第几条链: 0, 1, 2
+ * @param relayNumber 第几个relay: 0, 1, 2...
+ * @returns
+ */
 export function getApp2RelayData(chainIndex: number, relayNumber: number) {
     const loginStore = useLoginStore();
     const { chainLength, allAccountInfo, validatorAccount, sendInfo, tempAccountInfo } = loginStore;
@@ -43,7 +47,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.b = oneChainSendInfo.b[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
-        data.encrypedTokenOrHash = oneChainEncryptedToken[relayNumber]; // 加密后的token, applicant不能直接获取, 只是转发数据
+        // data.encrypedTokenOrHash = oneChainEncryptedToken[relayNumber]; // 加密后的token, applicant不能直接获取, 只是转发数据
     } else if (relayNumber === chainLength) {
         let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;
@@ -53,7 +57,7 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
         data.hf = oneChainSendInfo.hashForward[relayNumber];
         data.hb = oneChainSendInfo.hashBackward[relayNumber];
         data.c = oneChainSendInfo.c[relayNumber];
-        data.encrypedTokenOrHash = oneChainEncryptedToken[relayNumber]; // 加密后的token, applicant不能直接获取, 只是转发数据
+        // data.encrypedTokenOrHash = oneChainEncryptedToken[relayNumber]; // 加密后的token, applicant不能直接获取, 只是转发数据
     } else if (relayNumber === chainLength + 1) {
         let privatekay = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].key;
         data.from = oneChainTempAccountInfo.selectedAccount[relayNumber - 1].address;

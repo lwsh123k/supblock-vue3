@@ -49,6 +49,7 @@ export async function getPre2NextData(
         hb: expectedData?.appToRelayData?.hb,
         b: expectedData?.appToRelayData?.b,
         n: expectedData?.preToNextRelayData?.n,
+        t: tokenAddc,
         l: expectedData?.appToRelayData?.l!
     };
     return { processedData, tokenAddc };

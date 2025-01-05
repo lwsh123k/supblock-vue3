@@ -7,11 +7,11 @@ import { Wallet } from 'ethers';
 import { provider } from '@/ethers/provider';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
-import { getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
+import { getApp2RelayData, getApp2RelayInfoHash } from '@/ethers/chainData/getApp2RelayData';
 import { useRelayStore } from '@/stores/modules/relay';
 import { getPre2NextData } from '@/ethers/chainData/getPre2NextData';
 import { toRef } from 'vue';
-import { getAccountInfoByContract } from '@/ethers/chainData/getAccountById';
+import { getAccountInfoByContract } from '@/ethers/chainData/getChainData';
 
 // data type from extensions
 interface NumInfo {
@@ -30,7 +30,7 @@ interface NumInfo {
 export function bindExtension(socket: Socket) {
     // 从applicant store获取relay index
     let applicantStore = useApplicantStore();
-    let { datas, setNextRelayRealnameInfo } = applicantStore;
+    let { datas, setNextRelayAnonymousAccount } = applicantStore;
     let relayIndex = toRef(applicantStore, 'relayIndex');
 
     // 从login store获取账号信息, 具体使用哪个账号和next relay发送消息
@@ -60,14 +60,16 @@ export function bindExtension(socket: Socket) {
             let nextRelayIndex = specificRelayIndex + 1;
 
             // 更新存储的信息, 此处传入不带b, 函数实现使用自己生成的b
-            await setNextRelayRealnameInfo(chainId, nextRelayIndex, fairIntegerNumber, 'extension listening');
+            await setNextRelayAnonymousAccount(chainId, nextRelayIndex, fairIntegerNumber, 'extension listening');
 
-            // 向next relay匿名账户发送消息: 获取对方的公钥
+            // 向next relay匿名账户发送消息: 获取对方的公钥, 加密数据, 获取数据hash
             let data = getApp2RelayData(chainId, nextRelayIndex); // 获得下一轮需要的数据
             let accountAddress = await getAccountInfoByContract(blindedFairIntNum);
             data.to = accountAddress.address;
-            let encryptedData = await getEncryptData(accountAddress.publicKey, data);
-            let relayAddress = accountAddress.address;
+            let encryptedData = await getEncryptData(accountAddress.publicKey, data); // data 加密
+            let relayAnonymousAddress = accountAddress.address;
+            let dataHash = keccak256(JSON.stringify(data)); // data hash
+            dataHash = ensure0xPrefix(dataHash);
 
             // applicant使用当前轮的temp account, 给next relay发送下一轮的app tmep account
             let readOnlyStoreData = await getStoreData();
@@ -78,16 +80,16 @@ export function bindExtension(socket: Socket) {
             if (nextRelayIndex === chainLength) {
                 console.log('last user relay');
             }
-            // get data hash and upload
-            let hashResult = keccak256(JSON.stringify(data));
-            hashResult = ensure0xPrefix(hashResult);
-            await writeStoreData.setApp2Relay(relayAddress, encryptedData, hashResult);
+
+            // 上传数据, 要给next relay发送当前轮的infoHash, 说明选中了next relay
+            let infoHash = getApp2RelayInfoHash(chainId, nextRelayIndex);
+            await writeStoreData.setApp2Relay(relayAnonymousAddress, encryptedData, dataHash, infoHash!);
             console.log('app -> next relay 数据上链完成');
             console.log(
-                `app -> next relay: app temp account: ${addressA}, next relay anonymous address: ${relayAddress}, data:`,
+                `app -> next relay: app temp account: ${addressA}, next relay anonymous address: ${relayAnonymousAddress}, data:`,
                 data,
                 'hash result:',
-                hashResult
+                dataHash
             );
 
             // 进行完随机数选择, 和给下一个relay发送信息, relay index++, 表示当前轮结束
@@ -124,15 +126,16 @@ export function bindExtension(socket: Socket) {
             // 判断是否使用伪造数据
             if (useFakeData.value === true && fakeDataTime.value === 0) {
                 tokenAddc = '3333333333333333333333333333333333333333333333333333333333334455';
+                processedData.t = tokenAddc;
                 // only use fake data once
                 fakeDataTime.value++;
             }
 
             // 将 pre to next data 和 tokenAddc 加密
             let encryptedPre2NextData = await getEncryptData(nextRelayAnonymousPubkey, processedData);
-            let encrypedToken = await getEncryptData(nextRelayAnonymousPubkey, tokenAddc);
             let pre2NextDataHash = keccak256(JSON.stringify(processedData));
-            pre2NextDataHash = ensure0xPrefix(pre2NextDataHash);
+            // let encrypedToken = await getEncryptData(nextRelayAnonymousPubkey, tokenAddc);
+            let tokenHash = keccak256(tokenAddc);
 
             // 当前relay使用anonymous account
             let readOnlyStoreData = await getStoreData();
@@ -140,7 +143,7 @@ export function bindExtension(socket: Socket) {
             await writeStoreData.setPre2Next(
                 nextRelayAnonymousAddress,
                 encryptedPre2NextData,
-                encrypedToken,
+                tokenHash,
                 pre2NextDataHash
             );
             let blockNumber = await provider.getBlockNumber();

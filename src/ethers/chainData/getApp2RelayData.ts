@@ -79,6 +79,17 @@ export function getApp2RelayData(chainIndex: number, relayNumber: number) {
     return data;
 }
 
+/**
+ * 获取applicant和current relay生成公平随机数过程的hash, 然后发给next relay data
+ * @param chainIndex 第几条链: 0, 1, 2
+ * @param relayNumber 下一次要和哪个relay通信(next relay): 0, 1, 2...
+ * @returns 选出下一个relay, 对应的hash
+ */
+export function getApp2RelayInfoHash(chainIndex: number, relayNumber: number) {
+    if (relayNumber < 1) return null;
+    let { allInfoHash } = useApplicantStore();
+    return allInfoHash[chainIndex][relayNumber - 1];
+}
 // 验证数据错误时使用
 export function getApp2ReceivedData(chainIndex: number, relayIndex: number) {
     const loginStore = useLoginStore();
@@ -87,25 +98,23 @@ export function getApp2ReceivedData(chainIndex: number, relayIndex: number) {
         throw new Error('error chain index or relay number');
     }
     let { relays } = useApplicantStore();
-    let { tokens, allCheinTokenHash } = useVerifyStore();
+    let { tokens } = useVerifyStore();
     let chainRelay = relays[chainIndex];
     let chainToken = tokens[chainIndex];
 
     let oneChainTempAccountInfo = tempAccountInfo[chainIndex];
-    let oneChainTokenHash = allCheinTokenHash[chainIndex];
     let data: AppReceivedData = {
         tokenhash: null,
-        relayTempAccount: null,
+        relayRealnameAccount: null,
         encrypedToken: null,
         endingAccount: null
     };
     if (relayIndex === 0) {
         data.tokenhash = chainToken.tokenHash;
     } else if (relayIndex >= 1 && relayIndex <= chainLength) {
-        data.relayTempAccount = chainRelay[relayIndex].anonymousAccount;
-        data.tokenhash = oneChainTokenHash[relayIndex];
+        data.relayRealnameAccount = chainRelay[relayIndex].realNameAccount;
     } else if (relayIndex === chainLength + 1) {
-        data.encrypedToken = chainToken.tokenReceived; // 从validator接收到的token
+        data.encrypedToken = tokens[chainIndex].tokenReceived; // 从validator接收到的token
     } else if (relayIndex === chainLength + 2) {
         data.endingAccount = oneChainTempAccountInfo.selectedAccount[chainLength + 2].address;
     }

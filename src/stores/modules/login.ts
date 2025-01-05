@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { Buffer } from 'buffer';
 import { getAuthString } from '@/api';
 import { useSocketStore } from './socket';
-import { keccak256 } from '@/ethers/util';
+import { keccak256, verifyHashBackward } from '@/ethers/util';
 import { socketInit } from '@/socket';
 import type { Socket } from 'socket.io-client';
 import { listenRelayRes } from '@/ethers/eventListen/appEventListen';
@@ -141,6 +141,13 @@ export const useLoginStore = defineStore('login', () => {
                             sendInfo[i].hashBackward[0]
                         )
                     );
+                    // let res = verifyHashBackward(
+                    //     tempAccountInfo[i].selectedAccount[j + 1].address,
+                    //     sendInfo[i].r[j + 1],
+                    //     sendInfo[i].hashBackward[0],
+                    //     sendInfo[i].hashBackward[1]
+                    // );
+                    // console.log(res);
                 }
             }
         }

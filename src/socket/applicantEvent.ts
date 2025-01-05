@@ -4,7 +4,7 @@ import { useApplicantStore } from '@/stores/modules/applicant';
 import { storeToRefs } from 'pinia';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResData } from '@/ethers/chainData/chainDataType';
-import { getDecryptData, getHash, keccak256, subHexAndMod } from '@/ethers/util';
+import { getDecryptData, getHash, keccak256, subHexAndMod, wait } from '@/ethers/util';
 import { toRef, toRefs } from 'vue';
 import type { PublicKey, toApplicantSigned } from '@/views/FairIntegerGen/types';
 import eccBlind from '@/stores/modules/eccBlind';
@@ -184,25 +184,26 @@ export function appRecevieRelayData(socket: Socket) {
     let relays = applicantStore.relays;
     let { relayIndex } = storeToRefs(applicantStore);
     socket.on(
-        'next relay to app: send real name account)',
-        ({
+        'next relay to app: send real name account',
+        async ({
             data,
             applicantDataHash,
+            preRelayDataHash,
             chainIndex
         }: {
             data: RelayResData;
             applicantDataHash: string;
+            preRelayDataHash: string;
             chainIndex: number;
         }) => {
-            let { from, to, nextRelayRealnameAccount, encrypedToken } = data;
+            let { nextRelayRealnameAccount } = data;
             console.log(
-                `update relay anonymous account in socket, chain index: ${chainIndex}, next relay real name account: ${nextRelayRealnameAccount}`
+                `update relay real name account in socket, chain index: ${chainIndex}, next relay real name account: ${nextRelayRealnameAccount}`
             );
 
-            // 更新next relay real name account和token
+            // 更新next relay real name account
             // relayIndex.value[chainIndex]在extension通知applicant新页面打开时, 值已经+1
-            let intermediateToken = toRef(useVerifyStore(), 'intermediateToken');
-            intermediateToken.value[chainIndex][relayIndex.value[chainIndex]] = encrypedToken;
+            await wait(5000); // 等待5s区块监听方式, 如果区块没有监听到, 就使用socket更新
             relays[chainIndex][relayIndex.value[chainIndex]].realNameAccount = nextRelayRealnameAccount;
         }
     );

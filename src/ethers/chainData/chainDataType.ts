@@ -10,14 +10,13 @@ export type AppToRelayData = {
     b: null | number;
     c: null | string;
     l: number; // 比PreToNextRelayData中l大一
-    // encrypedTokenOrHash?: string; // 加密后的token, applicant不能直接获取, 只是转发数据
     chainIndex: number;
 };
 
 // app received data
 export type AppReceivedData = {
     tokenhash: string | null;
-    relayTempAccount: string | null;
+    relayRealnameAccount: string | null;
     encrypedToken: string | null;
     endingAccount: string | null;
 };
@@ -32,26 +31,31 @@ export type PreToNextRelayData = {
     hb: null | string;
     b: null | number;
     n: null | number;
-    t: null | string; // ??????????
+    t: null | string; // token
     l: number;
 };
 
 export type RelayResData = {
-    from: string; // relay anonymous account
-    to: string; // applicant temp account
+    // from: string; // relay anonymous account
+    // to: string; // applicant temp account
     nextRelayRealnameAccount: string; // relay要用的实名账户
-    // encrypedTokenOrHash: string; // 发送给applicant, applicant转发给下一个relay, 下一个relay对比数据
     // appToRelayDataHash: string; // app给relay发送的数据的hash, 作为relay对app数据的回应, 改为显式的放到event种
-    chainIndex: number;
+    // chainIndex: number; // 可有可无, 实际未使用
 };
 
 // relay从pre applicant和pre relay接收的数据
-interface DataHash {
+export interface DataHash {
     dataHash: string;
 }
+export interface InfoHash {
+    infoHash: string;
+}
+export interface TxHash {
+    txHash: string;
+}
 export type CombinedData = {
-    appToRelayData?: AppToRelayData & DataHash;
-    preToNextRelayData?: PreToNextRelayData & DataHash;
+    appToRelayData?: AppToRelayData & DataHash & InfoHash & TxHash;
+    preToNextRelayData?: PreToNextRelayData & DataHash & TxHash;
 };
 
 // data: pre applicant temp   and   pre relay -> next relay

@@ -1,6 +1,6 @@
 import { getAccountInfo } from '@/api';
 import { verifyWrongData } from '@/api/verifyWrongData';
-import { getApp2ReceivedData, getApp2RelayData } from '@/ethers/chainData/getApp2RelayData';
+import { getApp2ReceivedData, getApp2RelayData, getApp2RelayInfoHash } from '@/ethers/chainData/getApp2RelayData';
 import { appSendConfirmation } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
@@ -20,7 +20,7 @@ export async function verifyTokenAndReset(chainId: number) {
     if (tokens.value[chainId].verifyResult === true) {
         console.log(`chain ${chainId}: token is correct`);
         ElMessage({
-            message: 'Token successfully relayed',
+            message: 'token successfully relayed',
             type: 'success',
             duration: 3000
         });
@@ -30,15 +30,16 @@ export async function verifyTokenAndReset(chainId: number) {
         let wrongData = [];
         for (let i = 0; i <= chainLength + 2; i++) {
             let PA = getApp2RelayData(chainId, i);
-            PA.to = relays[chainId][i].realNameAccount;
+            PA.to = relays[chainId][i].anonymousAccount;
+            let infoHash = getApp2RelayInfoHash(chainId, i);
             let PAReceive = getApp2ReceivedData(chainId, i);
-            wrongData.push({ PA, PAReceive });
+            wrongData.push({ PA: { ...PA, infoHash }, PAReceive });
         }
-        let result = await verifyWrongData(wrongData);
+        let res = await verifyWrongData(wrongData);
 
         // reset data
-        if (result === false) {
-            console.log(`relayed token is wrong, chainid ${chainId}`);
+        if (res.result === true) {
+            console.log(`${res.index}-${res.address} relayed wrong token. data will be reset. chainid: ${chainId}`);
             let appStore = useApplicantStore();
             let { resetTableData: func1, resetRelayInfo: func2 } = appStore;
             let relayIndex = toRef(appStore, 'relayIndex');
@@ -48,11 +49,11 @@ export async function verifyTokenAndReset(chainId: number) {
             // clear saved token and hash
             // not need...
             ElMessage({
-                message: 'Token is incorrect. Data will be reset.',
+                message: `${res.index}-${res.address} relayed wrong token. data will be reset.`,
                 type: 'error',
-                duration: 3000
+                duration: 10000
             });
-        } else if (result === true) {
+        } else {
             console.log(`sending chain confirmation, chainid ${chainId}`);
             // send chain confirmation to validator
             appSendConfirmation(chainId);

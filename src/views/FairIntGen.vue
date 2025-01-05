@@ -16,6 +16,7 @@
                         :relays="relays[index]"
                         :oneChainSendInfo="sendInfo[index]"
                         :oneChainTempAccount="tempAccountInfo[index]"
+                        :oneChainInfoHash="allInfoHash[index]"
                         :chainId="index" />
                 </div>
             </el-collapse-item>
@@ -55,8 +56,10 @@ import FairIntTable from './FairIntegerGen/FairIntTable.vue';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 // 从store中导入数据
 let applicantStore = useApplicantStore();
+// datas = [], 丢失响应性; datas.xx = a, 不会丢失响应性
 let datas = applicantStore.datas;
 let relays = applicantStore.relays;
+let allInfoHash = applicantStore.allInfoHash;
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount, sendInfo, allAccountInfo, tempAccountInfo } = loginStore;
 

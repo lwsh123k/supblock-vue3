@@ -119,15 +119,16 @@ const props = defineProps<{
             address: string;
         }[];
     };
+    oneChainInfoHash: string[];
     chainId: number; // 标识这是第几条链
 }>();
 
-const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainId } = props;
+const { datas, relays, oneChainSendInfo, oneChainTempAccount, chainId, oneChainInfoHash } = props;
 // console.log(props);
 
 // 从store中导入数据
 let applicantStore = useApplicantStore();
-const { resetCurrentStep, setNextRelayRealnameInfo } = applicantStore;
+const { resetCurrentStep, setNextRelayAnonymousAccount } = applicantStore;
 const loginStore = useLoginStore();
 const { chainLength, validatorAccount } = loginStore;
 const totalStep = chainLength + 1;
@@ -200,6 +201,8 @@ async function uploadHashAndListen() {
     datas[step][0].isReupload = false;
     // 更新表格
     datas[step][0].randomText = ni.toString();
+    // 保存info hash, 在之后applicant -> relay使用
+    oneChainInfoHash[step] = hash;
 
     // send to server when hash uploads
     let b = oneChainSendInfo.b[currentStep];
@@ -263,7 +266,7 @@ async function uploadHashAndListen() {
                 datas[step][0].status = '随机数已重新上传';
                 datas[step][0].isReupload = true;
                 // set next relay number, update next relay info
-                await setNextRelayRealnameInfo(chainId, ++currentStep, ni, 'event listening A');
+                await setNextRelayAnonymousAccount(chainId, ++currentStep, ni, 'event listening A');
             }
         });
 
@@ -276,7 +279,7 @@ async function uploadHashAndListen() {
             datas[step][1].randomText = datas[step][1].randomNumBefore + ' / ' + ni.toString();
             datas[step][1].isReupload = true;
             console.log('监听到relay重传随机数');
-            await setNextRelayRealnameInfo(chainId, ++currentStep, ni, 'event listening A');
+            await setNextRelayAnonymousAccount(chainId, ++currentStep, ni, 'event listening A');
         })
         .catch((error: Error) => {
             console.log('没有监听到随机数重传');
@@ -373,11 +376,11 @@ watchEffect(async () => {
                 datas[i][0].isReupload = true;
                 // 设置next relay
                 let nextStep = i + 1;
-                await setNextRelayRealnameInfo(chainId, nextStep, niReuploaded, 'event listening B');
+                await setNextRelayAnonymousAccount(chainId, nextStep, niReuploaded, 'event listening B');
             } else {
                 let selectedNum = (datas[i][0].randomNumBefore + datas[i][1].randomNumBefore) % 99;
                 let nextStep = i + 1;
-                await setNextRelayRealnameInfo(chainId, nextStep, selectedNum, 'event listening B');
+                await setNextRelayAnonymousAccount(chainId, nextStep, selectedNum, 'event listening B');
                 console.log('随机数正确 ');
             }
 

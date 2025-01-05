@@ -6,18 +6,26 @@ import { useApplicantStore } from '@/stores/modules/applicant';
 import { toRef } from 'vue';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 
-// 监听relay anonymous account -> applicant temp account: relay将要使用的实名账户信息
+// socket监听relay anonymous account -> applicant temp account: relay将要使用的实名账户信息
+// 功能与区块监听重合===
 export async function listenRelayRes(appTempAccounts: string[]) {
     const storeData = await getStoreData();
     const { tempAccountInfo } = useLoginStore();
     let { chainNumber, chainLength } = useLoginStore();
-    let applicantStore = useApplicantStore();
-    let relays = applicantStore.relays;
+    let { relays, allInfoHash } = useApplicantStore();
 
     let RelayResFilter = storeData.filters.RelayResEvidenceEvent(null, null);
     storeData.on(
         RelayResFilter,
-        async (relayAnonymousAccount, appTempAccount, data, dataHash, app2RelayResEvidence, pre2NextResEvidence) => {
+        async (
+            relayAnonymousAccount,
+            appTempAccount,
+            data,
+            dataHash,
+            app2RelayResEvidence,
+            pre2NextResEvidence,
+            infoHash
+        ) => {
             // 过滤不是发给自己的
             if (!appTempAccounts.includes(appTempAccount)) return;
             // get app temp account private key
@@ -26,16 +34,20 @@ export async function listenRelayRes(appTempAccounts: string[]) {
                 chainIndex: number = -1,
                 relayIndex: number = -1;
             // 既可以对比app2RelayResEvidence, 也可以尝试解码数据来获取chain index和relay index
-            for (let i = 0; i < chainNumber; i++) {
-                let specificChain = tempAccountInfo[i];
+            let found = false;
+            for (let i = 0; i < chainNumber && !found; i++) {
+                let specificChain = allInfoHash[i];
                 for (let j = 0; j < chainLength; j++) {
-                    let account = specificChain.selectedAccount[i];
+                    let myInfoHash = specificChain[j];
                     try {
-                        let privateKey = account.key;
-                        decodedData = await getDecryptData(privateKey, data);
-                        chainIndex = i;
-                        relayIndex = j;
-                        break;
+                        if (ensure0xPrefix(myInfoHash) === ensure0xPrefix(infoHash)) {
+                            let privateKey = tempAccountInfo[i].selectedAccount[j].key;
+                            decodedData = await getDecryptData(privateKey, data);
+                            chainIndex = i;
+                            relayIndex = j;
+                            found = true;
+                            break;
+                        }
                     } catch (error) {}
                 }
             }
@@ -55,10 +67,7 @@ export async function listenRelayRes(appTempAccounts: string[]) {
             );
 
             // update next relay's real name account, save encrypted token
-            let { from, to, nextRelayRealnameAccount, encrypedTokenOrHash } = decodedData;
-            let allCheinTokenHash = toRef(useVerifyStore(), 'allCheinTokenHash');
-            allCheinTokenHash.value[chainIndex][relayIndex + 1] = encrypedTokenOrHash;
-
+            let { nextRelayRealnameAccount } = decodedData;
             console.log(
                 `relay -> app(update next relay real name account in ethersjs), chain index: ${chainIndex}, next relay index: ${relayIndex + 1}, next relay real name account: ${nextRelayRealnameAccount}`
             );

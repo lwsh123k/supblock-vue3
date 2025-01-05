@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue';
 import { useLoginStore } from './login';
 import { getAccountInfo } from '@/api';
 import type { DataItem, RelayAccount } from './types';
-import { getAccountInfoByContract } from '@/ethers/chainData/getAccountById';
+import { getAccountInfoByContract } from '@/ethers/chainData/getChainData';
 
 // 存储appliacnt申请过程中的数据, 数据和statistics页面共享, 用于请求所需的gas
 export const useApplicantStore = defineStore('applicantStore', () => {
@@ -114,7 +114,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
      * @param updatePlace 在哪儿调用这个函数
      * @returns
      */
-    async function setNextRelayRealnameInfo(
+    async function setNextRelayAnonymousAccount(
         chainIndex: number,
         nextRelayIndex: number,
         ni: number,
@@ -153,6 +153,12 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         relay[nextRelayIndex].anonymousAccount = accountInfo.address;
     }
 
+    // 存储info hash(申请者公平随机数hash)
+    let allInfoHash = reactive<string[][]>(
+        Array(chainNumber)
+            .fill(null)
+            .map(() => Array(chainLength).fill(''))
+    );
     // 重置
     function $reset() {}
 
@@ -163,6 +169,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
         relayIndex,
         resetTableData,
         resetRelayInfo,
-        setNextRelayRealnameInfo
+        setNextRelayAnonymousAccount,
+        allInfoHash
     };
 });

@@ -6,7 +6,14 @@ import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
 import { keccak256 as keccak256Hash } from 'js-sha3';
 
-// 计算hash, 使用keccak256, 保证数据类型与solidity中的数据类型一致
+/**
+ * 计算hash, 使用keccak256, 保证数据类型与solidity中的数据类型一致
+ * @param ni
+ * @param ta
+ * @param tb
+ * @param ri
+ * @returns 返回带0x前缀的hash
+ */
 export function getHash(ni: number, ta: number, tb: number, ri: string) {
     const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256', 'uint256', 'uint256'], [ni, ta, tb, ri]);
     return hash;
@@ -76,12 +83,16 @@ export async function getDecryptData(privateKey: string, encryptedData: string) 
     return data;
 }
 
-// 对任意个数的参数取hash
+/**
+ * 对任意个数的参数取hash
+ * @param args 任意string参数
+ * @returns 带0x前缀的hash
+ */
 export function keccak256(...args: string[]) {
     const hash = keccak256Hash.create();
     for (let arg of args) hash.update(arg.toString());
     const result = hash.hex();
-    return result;
+    return ensure0xPrefix(result);
 }
 
 export function sha256Hash(...args: string[]) {
@@ -113,6 +124,12 @@ export function verifyHashBackward(applicantTempAccount: string, r: string, curr
     else return currentHash === keccak256(applicantTempAccount, r, nextHash);
 }
 
+/**
+ * 两个16进制相加取模, 输入带不带0x前缀都可以
+ * @param hex1 hex1
+ * @param hex2 hex2
+ * @returns (hex1 + hex2) mod 2^256, 返回值不带0x前缀, 对于计算值, 都不带0x
+ */
 export function addHexAndMod(hex1: string, hex2: string) {
     // format
     hex1 = hex1.startsWith('0x') ? hex1 : '0x' + hex1;
@@ -127,8 +144,7 @@ export function addHexAndMod(hex1: string, hex2: string) {
     const result = (num1 + num2) % mod;
 
     // 将结果转换回64位16进制字符串
-    // return result.toString(16).padStart(64, '0');
-    return result.toString(16);
+    return result.toString(16).padStart(64, '0');
 }
 
 export function subHexAndMod(hex1: string, hex2: string) {
@@ -178,4 +194,8 @@ export function formatAddress(address: string) {
 
 export function padTo64(hexStr: string): string {
     return hexStr.padStart(64, '0');
+}
+
+export function wait(timeout: number) {
+    return new Promise((resolve) => setTimeout(resolve, timeout));
 }

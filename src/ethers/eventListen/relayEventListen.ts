@@ -19,6 +19,8 @@ import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
 import { provider } from '../provider';
 import { getAccountInfoByInfoHash, getBlindedFairIntByInfoHash } from '../chainData/getChainData';
 import type { App2RelayEventEvent, Pre2NextEventEvent } from '../types/StoreData';
+import type { TypedListener } from '../types/common';
+import type { ReqHashUploadEvent } from '../types/FairInteger';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen() {
@@ -33,49 +35,7 @@ export async function backendListen() {
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
     const fairIntGen = await getFairIntGen();
     let hashFilter = fairIntGen.filters.ReqHashUpload(null, realNameAddress);
-    fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, index) => {
-        // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
-        console.log('app -> relay: hash upload event detected');
-        console.log('data: ', {
-            applicant: from,
-            relayRealNameAccount: to,
-            infoHash,
-            tA: tA.toNumber(),
-            tB: tB.toNumber(),
-            index: index.toString()
-        });
-        dataFromApplicant.push({
-            role: 'applicant',
-            from: from,
-            to: to,
-            randomNumBefore: null,
-            randomText: null,
-            executionTime: tA.toNumber(),
-            tA: tA.toNumber(),
-            tB: tB.toNumber(),
-            r: null,
-            status: 'hash已上传',
-            hash: infoHash,
-            index: index.toNumber()
-        });
-        dataToApplicant.push({
-            role: 'relay',
-            executionTime: tB.toString(),
-            r: null,
-            hash: '',
-            status: '',
-            index: null,
-            isReupload: false,
-            isUpload: false
-        });
-
-        // 展示最新数据
-        // activeStep.value = Math.min(dataFromApplicant.length, dataToApplicant.length) - 1;
-
-        // 自动上传
-        // triggerEvents();
-        // finally do this by watching dataFromApplicant.length
-    });
+    // fairIntGen.on(hashFilter, processFairIntNumReq); // 使用provider监听
 
     // store contract事件监听
     const currentBlockNumber = await provider.getBlockNumber();
@@ -119,29 +79,42 @@ export async function backendListen() {
     // 更加保险的做法, 监听current block +0, +1, +2区块
     // 设置 block 监听器并在处理完指定数量后移除
     const blockListener = async (blockNumber: number) => {
-        console.log(`New block: ${blockNumber}`);
+        if (blockNumber % 100 === 0) {
+            console.log(`current block number: ${blockNumber}`);
+        }
 
-        // 查询该区块的事件
+        // 公平随机数hash上传
+        fairIntGen.queryFilter(hashFilter, blockNumber, blockNumber).then((events) => {
+            for (const event of events) {
+                const { from, to, infoHashA, tA, tB, index } = event.args;
+                processFairIntNumReq(from, to, infoHashA, tA, tB, index, event);
+            }
+        });
+        // app -> relay, pre relay -> next relay
         const events1 = await storeData.queryFilter(app2Relayfilter, blockNumber, blockNumber);
-        console.log('app to relay current event:', events1);
+        if (events1.length !== 0) {
+            console.log('app to relay current event:', events1);
+        }
         for (const event of events1) {
             const { from, relay, data, dataHash, infoHash } = event.args;
             await processApp2RelayEvent(from, relay, data, dataHash, infoHash, event, 'current listening');
         }
         const events2 = await storeData.queryFilter(pre2Nextfilter, blockNumber, blockNumber);
-        console.log('pre to next relay current event:', events2);
+        if (events2.length !== 0) {
+            console.log('pre to next relay current event:', events2);
+        }
         for (const event of events2) {
             const { from, relay, data, tokenHash, dataHash } = event.args;
             await processPre2NextEvent(from, relay, data, tokenHash, dataHash, event, 'current listening');
         }
 
         processedBlockCount++;
-        console.log(`Processed ${processedBlockCount} of ${targetBlockCount} blocks`);
+        // console.log(`Processed ${processedBlockCount} of ${targetBlockCount} blocks`);
 
-        // 当处理完指定数量的区块后，移除监听器
+        // 当处理完指定数量的区块后，移除监听器;  暂时不移除
         if (processedBlockCount >= targetBlockCount) {
-            console.log('Target block count reached, removing block listener');
-            provider.removeListener('block', blockListener);
+            // console.log('Target block count reached, removing block listener');
+            // provider.removeListener('block', blockListener);
         }
     };
 
@@ -376,3 +349,40 @@ function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRel
     //     data2NextRelay.t = data.t;
     // }
 }
+
+let processFairIntNumReq: TypedListener<ReqHashUploadEvent> = async (from, to, infoHashA, tA, tB, index, event) => {
+    let { dataFromApplicant, dataToApplicant } = useRelayStore();
+    console.log('app -> relay: hash upload event detected');
+    console.log('data: ', {
+        applicant: from,
+        relayRealNameAccount: to,
+        infoHashA,
+        tA: tA.toNumber(),
+        tB: tB.toNumber(),
+        index: index.toString()
+    });
+    dataFromApplicant.push({
+        role: 'applicant',
+        from: from,
+        to: to,
+        randomNumBefore: null,
+        randomText: null,
+        executionTime: tA.toNumber(),
+        tA: tA.toNumber(),
+        tB: tB.toNumber(),
+        r: null,
+        status: 'hash已上传',
+        hash: infoHashA,
+        index: index.toNumber()
+    });
+    dataToApplicant.push({
+        role: 'relay',
+        executionTime: tB.toString(),
+        r: null,
+        hash: '',
+        status: '',
+        index: null,
+        isReupload: false,
+        isUpload: false
+    });
+};

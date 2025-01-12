@@ -1,51 +1,33 @@
 <template>
-    <div style="display: flex; flex-direction: column; align-items: center; margin: 2vh 0">
+    <div class="flowchart-container">
         <!-- margin: 设置自己边距; flex: 设置子元素位置 -->
         <canvas ref="flowChartRef" :width="1300" :height="400" style="border: 1px solid #000"></canvas>
+        <!-- 输入框仅在编辑状态下显示 -->
+        <input
+            v-if="currentEditingBlock"
+            v-model="editingText"
+            :style="inputStyle"
+            @keyup.enter="updateBlockText"
+            @blur="cancelEditing"
+            autofocus />
     </div>
 </template>
 
 <script setup lang="ts">
 import { formatAddress } from '@/ethers/util';
 import { io, type Socket } from 'socket.io-client';
-import { ref, onMounted, type Ref, onUnmounted } from 'vue';
-
-// 接口定义
-interface Block {
-    id: number;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    text: string;
-    color: ColorType;
-    chainId?: number;
-    relayId?: number;
-    blindedFairInteger?: number;
-}
-
-interface Arrow {
-    fromId: number;
-    toId: number;
-}
-
-interface Point {
-    x: number;
-    y: number;
-}
-// 图例
-interface Legend {
-    color: ColorType;
-    text: string;
-}
-
-// 类型定义
-type ColorType = 'red' | 'yellow' | 'green' | 'grey' | 'blue';
-type ColorMapType = Record<ColorType, string>;
+import { ref, onMounted, type Ref, onUnmounted, watch } from 'vue';
+import type { Arrow, Block, ColorMapType, Legend, Point } from './types';
+import { findIntersectionPoint, getDiagonalCorners } from './drawUtil';
+import { findLastRelay } from '@/api/reverseTrace';
 
 // ref 类型定义
 const flowChartRef = ref<HTMLCanvasElement | null>(null);
 const ctx = ref<CanvasRenderingContext2D | null>(null);
+// 编辑框
+const currentEditingBlock = ref<Block | null>(null);
+const editingText = ref<string>('');
+const inputStyle = ref<Record<string, string>>({});
 
 const blocks = ref<Block[]>([
     { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
@@ -58,8 +40,8 @@ const blocks = ref<Block[]>([
     { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
     { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
     { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
-    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' },
-    { id: 12, x: 950, y: 150, w: 120, h: 50, text: 'validator', color: 'blue' }
+    { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'validator', color: 'blue' },
+    { id: 12, x: 950, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' }
 ]);
 
 const arrows = ref<Arrow[]>([
@@ -87,7 +69,7 @@ const colorMap: ColorMapType = {
     blue: '#4287f5'
 };
 
-// 内容居中显示
+// 偏移使内容居中显示
 const calculateOffset = (): number => {
     let minX = Infinity;
     let maxX = -Infinity;
@@ -141,23 +123,6 @@ const drawConnection = (fromX: number, fromY: number, toX: number, toY: number):
     ctx.value.stroke();
 
     drawArrowhead(toX, toY, angle);
-};
-
-const findIntersectionPoint = (fromX: number, fromY: number, toX: number, toY: number, targetBlock: Block): Point => {
-    const angle = Math.atan2(toY - fromY, toX - fromX);
-
-    let intersectX: number;
-    let intersectY: number;
-
-    if (Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))) {
-        intersectX = Math.cos(angle) > 0 ? targetBlock.x : targetBlock.x + targetBlock.w;
-        intersectY = fromY + (intersectX - fromX) * Math.tan(angle);
-    } else {
-        intersectY = Math.sin(angle) > 0 ? targetBlock.y : targetBlock.y + targetBlock.h;
-        intersectX = fromX + (intersectY - fromY) / Math.tan(angle);
-    }
-
-    return { x: intersectX, y: intersectY };
 };
 
 const drawBidirectionalArrow = (fromBlock: Block, toBlock: Block, offset: number): void => {
@@ -219,42 +184,6 @@ const drawLegend = (): void => {
     });
 };
 
-// 根据目标方块相对于源方块的位置来选择对角点
-const getDiagonalCorners = (from: Block, to: Block): { start: Point; end: Point } => {
-    const fromTopLeft: Point = { x: from.x, y: from.y };
-    const fromTopRight: Point = { x: from.x + from.w, y: from.y };
-    const fromBottomLeft: Point = { x: from.x, y: from.y + from.h };
-    const fromBottomRight: Point = { x: from.x + from.w, y: from.y + from.h };
-
-    const toTopLeft: Point = { x: to.x, y: to.y };
-    const toTopRight: Point = { x: to.x + to.w, y: to.y };
-    const toBottomLeft: Point = { x: to.x, y: to.y + to.h };
-    const toBottomRight: Point = { x: to.x + to.w, y: to.y + to.h };
-
-    const dx = to.x + to.w / 2 - (from.x + from.w / 2);
-    const dy = to.y + to.h / 2 - (from.y + from.h / 2);
-
-    // 根据dx, dy所处的象限决定使用哪一对对角点
-    // 这里的逻辑是一个示例：
-    // 1. 如果to在from的右下方(dx > 0, dy > 0)，使用from的右下角到to的左上角
-    // 2. 如果to在from的右上方(dx > 0, dy < 0)，使用from的右上角到to的左下角
-    // 3. 如果to在from的左下方(dx < 0, dy > 0)，使用from的左下角到to的右上角
-    // 4. 如果to在from的左上方(dx < 0, dy < 0)，使用from的左上角到to的右下角
-
-    if (dx > 0 && dy > 0) {
-        // to在from的右下
-        return { start: fromBottomRight, end: toTopLeft };
-    } else if (dx > 0 && dy < 0) {
-        // to在from的右上
-        return { start: fromTopRight, end: toBottomLeft };
-    } else if (dx < 0 && dy > 0) {
-        // to在from的左下
-        return { start: fromBottomLeft, end: toTopRight };
-    } else {
-        // to在from的左上
-        return { start: fromTopLeft, end: toBottomRight };
-    }
-};
 const draw = (): void => {
     if (!ctx.value || !flowChartRef.value) return;
 
@@ -267,6 +196,9 @@ const draw = (): void => {
     arrows.value.forEach(({ fromId, toId }) => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
+
+        // from和to text不为空
+        if (from.text === '' || to.text === '') return;
 
         const fromCenterX = from.x + from.w / 2;
         const fromCenterY = from.y + from.h / 2;
@@ -306,14 +238,15 @@ const draw = (): void => {
         if (!ctx.value) return;
 
         // 只有text不为空
-        // if (block.text === '') return;
+        if (block.text === '') return;
         // set colour
-        // let fillColour: ColorType = 'grey';
-        // if (block.blindedFairInteger === null || block.blindedFairInteger === undefined) fillColour = 'grey';
-        // else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = 'red';
-        // else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = 'green';
-        // else fillColour = 'yellow';
-        let fillColour = colorMap[block.color];
+        let fillColour = colorMap['grey'];
+        if (block.text === 'real name account' || block.text === 'validator') fillColour = colorMap['blue'];
+        else if (block.blindedFairInteger === null || block.blindedFairInteger === undefined)
+            fillColour = colorMap['grey'];
+        else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = colorMap['red'];
+        else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = colorMap['green'];
+        else fillColour = colorMap['yellow'];
         ctx.value.fillStyle = fillColour;
         ctx.value.fillRect(block.x, block.y, block.w, block.h);
         ctx.value.strokeStyle = 'black';
@@ -331,16 +264,24 @@ const draw = (): void => {
 
 const handleCanvasClick = (event: MouseEvent): void => {
     if (!flowChartRef.value) return;
+    const container = flowChartRef.value.parentElement;
+    if (!container) return;
 
-    // 获取鼠标点击的相对位置
-    const rect = flowChartRef.value.getBoundingClientRect();
+    // 获取 Canvas 和容器的边界
+    const canvasRect = flowChartRef.value.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+
+    // 计算 Canvas 相对于容器的偏移
+    const offsetX = canvasRect.left - containerRect.left;
+    const offsetY = canvasRect.top - containerRect.top;
+
     // 计算 Canvas 显示与逻辑坐标的比例
-    const scaleX = flowChartRef.value.width / rect.width;
-    const scaleY = flowChartRef.value.height / rect.height;
+    const scaleX = flowChartRef.value.width / canvasRect.width;
+    const scaleY = flowChartRef.value.height / canvasRect.height;
 
     // 将鼠标点击坐标转换为 Canvas 内部坐标
-    const mouseX = (event.clientX - rect.left) * scaleX;
-    const mouseY = (event.clientY - rect.top) * scaleY;
+    const mouseX = (event.clientX - canvasRect.left) * scaleX;
+    const mouseY = (event.clientY - canvasRect.top) * scaleY;
 
     // 检测是否点击到某个 block
     const clickedBlock = blocks.value.find(
@@ -348,11 +289,71 @@ const handleCanvasClick = (event: MouseEvent): void => {
     );
 
     if (clickedBlock) {
-        console.log('Clicked block:', clickedBlock);
+        // console.log('Clicked block:', clickedBlock);
+
+        // 对relay询问
+        if (clickedBlock.id >= 2 && clickedBlock.id <= 10) {
+        }
+        // 编辑anonymous account block
+        if (clickedBlock.id === 12) {
+            currentEditingBlock.value = clickedBlock;
+            editingText.value = clickedBlock.text;
+            // console.log(offsetX, offsetY, flowChartRef.value.width, canvasRect.width, scaleX, clickedBlock.x / scaleX);
+
+            inputStyle.value = {
+                position: 'absolute',
+                left: `${offsetX * scaleX + clickedBlock.x}px`,
+                top: `${offsetY + clickedBlock.y}px`,
+                width: `${clickedBlock.w}px`,
+                height: `${clickedBlock.h}px`,
+                fontSize: '16px',
+                textAlign: 'center',
+                border: '1px solid #ccc',
+                padding: '0',
+                margin: '0',
+                boxSizing: 'border-box'
+            };
+        }
+
         // 执行点击后的逻辑，例如高亮 block 或显示信息
         // handleBlockClick(clickedBlock);
     }
 };
+async function updateBlockText() {
+    if (currentEditingBlock.value) {
+        let text = editingText.value;
+        currentEditingBlock.value.text = editingText.value;
+        currentEditingBlock.value = null;
+        editingText.value = '';
+        // reset
+        resetAllBlocks();
+        let lastRelayInfo = await findLastRelay(text);
+        console.log('lastRelayInfo: ', lastRelayInfo);
+        for (let lastRelay of lastRelayInfo) {
+            console.log('lastRelay: ', lastRelay);
+            if (lastRelay.chainIndex === 0) {
+                resetBlockText(blocks, 0, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+            } else if (lastRelay.chainIndex === 1) {
+                resetBlockText(blocks, 1, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+            } else if (lastRelay.chainIndex === 2) {
+                resetBlockText(blocks, 2, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+            }
+        }
+    }
+}
+
+function cancelEditing() {
+    currentEditingBlock.value = null;
+    editingText.value = '';
+}
+
+watch(
+    blocks,
+    () => {
+        draw();
+    },
+    { deep: true }
+);
 
 onMounted(() => {
     if (!flowChartRef.value) return;
@@ -422,19 +423,17 @@ const resetBlockText = (
         targetBlock.text = newText;
         targetBlock.blindedFairInteger = blindedFairIntNum;
     }
-
-    // 重置其他相关区块
-    if (chainId === 0 && relayId === 0) {
-        blocks.value = blocks.value.map((block) => {
-            // applicant real name, anonymous, validaor block
-            if (block.id === 1 || block.id > 10) {
-                return block;
-            } else if (block.id === 2) {
-                return block; // chainid = 0 && relayid = 0, 已经在target block设置
-            } else return { ...block, text: '', blindedFairInteger: -1 };
-        });
-    }
 };
+function resetAllBlocks() {
+    blocks.value = blocks.value.map((block) => {
+        // applicant real name, anonymous, validaor block
+        if (block.id === 1 || block.id > 10) {
+            return block;
+        } else return { ...block, text: '', blindedFairInteger: -1 };
+    });
+    // draw(); // 已经在onMounted中监听blocks变化
+}
+
 // 组件卸载时清理
 onUnmounted(() => {
     if (socket.value) {
@@ -445,3 +444,18 @@ onUnmounted(() => {
     }
 });
 </script>
+
+<style scoped>
+.flowchart-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 2vh 0;
+}
+input {
+    border: 1px solid #ccc;
+    padding: 2px;
+    box-sizing: border-box;
+}
+</style>

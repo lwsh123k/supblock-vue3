@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Transfer from '../views/Transfer.vue';
 import Bridge from '../views/Bridge.vue';
-import FairIntGen from '@/views/FairIntGen.vue';
+import FairIntGen from '@/views/FairIntegerGen/FairIntGen.vue';
 import Stats from '@/views/Stats.vue';
 import RelayInfo from '@/views/RelayInfo.vue';
-import Trace from '@/views/Trace.vue';
+import Trace from '@/views/ReverseTrack/Trace.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),

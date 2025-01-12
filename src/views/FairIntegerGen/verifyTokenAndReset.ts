@@ -22,8 +22,11 @@ export async function verifyTokenAndReset(chainId: number) {
         ElMessage({
             message: 'token successfully relayed',
             type: 'success',
-            duration: 3000
+            duration: 10000,
+            showClose: true
         });
+        // send chain confirmation to validator
+        appSendConfirmation(chainId);
     } else {
         // send to validator to verify chain data
         // token received and c
@@ -51,12 +54,13 @@ export async function verifyTokenAndReset(chainId: number) {
             ElMessage({
                 message: `${res.index}-${res.address} relayed wrong token. data will be reset.`,
                 type: 'error',
-                duration: 10000
+                duration: 10000,
+                showClose: true
             });
         } else {
-            console.log(`sending chain confirmation, chainid ${chainId}`);
-            // send chain confirmation to validator
-            appSendConfirmation(chainId);
+            // console.log(`sending chain confirmation, chainid ${chainId}`);
+            // // send chain confirmation to validator
+            // appSendConfirmation(chainId);
         }
     }
 }

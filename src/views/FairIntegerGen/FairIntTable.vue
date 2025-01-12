@@ -96,7 +96,6 @@ import { appSendInitData, send2Extension } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { ethers, Wallet } from 'ethers';
-import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import type { DataItem, PublicKey, RelayAccount, toApplicantSigned } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';

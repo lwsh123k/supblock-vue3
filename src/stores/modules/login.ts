@@ -150,6 +150,7 @@ export const useLoginStore = defineStore('login', () => {
                     // console.log(res);
                 }
             }
+            console.log('ending account:', allAccountInfo.accounts[endingAccountIndex].address);
         }
 
         // using socket to login

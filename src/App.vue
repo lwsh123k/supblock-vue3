@@ -13,8 +13,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from 'vue-router';
 import Header from '@/components/Header.vue';
-import FairIntGenCard from './views/FairIntegerGen/FairIntGenCard.vue';
-import Stats from './views/Stats.vue';
 import { onMounted, onUnmounted } from 'vue';
 // 缩放功能
 const setScale = () => {
@@ -36,16 +34,19 @@ const setScale = () => {
         maxScale = 1.2;
     scale = Math.min(Math.max(scaleX, minScale), maxScale);
 
-    content.style.transform = `scale(${scale})`;
+    // content.style.transform = `scale(${scale})`;
 
     // 居中内容
     const scaledWidth = designWidth * scale;
     const scaledHeight = designHeight * scale;
 
     const marginLeft = (containerWidth - scaledWidth) / 2;
+    // console.log(marginLeft, scale);
     // const marginTop = (containerHeight - scaledHeight) / 2;
 
-    content.style.left = `${marginLeft}px`;
+    content.style.transform = `translateX(${marginLeft}px) scale(${scale})`;
+    content.style.left = '0px';
+    // content.style.left = `${marginLeft}px`;
     // content.style.top = `${marginTop}px`;
 };
 
@@ -73,7 +74,6 @@ onUnmounted(() => {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    position: relative;
 }
 
 .scale-content {

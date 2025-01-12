@@ -88,7 +88,7 @@ export function appRecevieValidatorData(socket: Socket) {
     });
 
     // chain confirmation
-    socket.on('chain confirmation result', (data: { result: boolean }) => {
+    socket.on('chain confirmation result', (data: { result: boolean; reason?: string }) => {
         let res = data.result;
         console.log(`chain confirmation result: ${res}`);
     });
@@ -229,7 +229,7 @@ export async function send2Extension(
     socket0.emit('blinding number', data);
 }
 
-// applicant sends final data to validator
+// applicant -> validator: send final data
 export async function appSendFinalData(chainIndex: number) {
     // obtain the account corresponding to the validator
     let { tempAccountInfo, chainLength } = useLoginStore();

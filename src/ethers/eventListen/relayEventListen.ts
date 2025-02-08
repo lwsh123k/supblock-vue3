@@ -1,6 +1,5 @@
 import { useLoginStore } from '@/stores/modules/login';
 import { getFairIntGen, getStoreData } from '../contract';
-import { BigNumber, Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
 import { ensure0xPrefix, getDecryptData, keccak256, verifyHashBackward, verifyHashForward } from '../util';
 import { sendNextRelay2AppData } from '../chainData/getRelay2AppData';

@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, type Ref } from 'vue';
+import { ref, toRef, type Ref } from 'vue';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
 import { backendListen } from '@/ethers/eventListen/relayEventListen';
@@ -106,9 +106,11 @@ function handleFileChange(event: Event) {
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // relay listens hash, pre relay info, pre app info
                 await backendListen();
-                console.log('backend listen success');
-                // tokenChain.listenAppData();
-                // tokenChain.listenPreRelayData();
+                console.log('backend listen success: relay listens hash, pre relay info, pre app info');
+                // 提取数字, 为validator询问做准备
+                let number = file.name.match(/\d+/g);
+                let userNumber = toRef(useLoginStore(), 'userNumber');
+                if (number && userNumber) userNumber.value = Number(number[0]);
             } catch (e) {
                 console.log(e);
             }

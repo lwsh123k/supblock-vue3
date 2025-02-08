@@ -4,7 +4,9 @@ type LastRelayType = {
     chainIndex: number;
     lastRelayAccount: string;
     lastRelayIndex: number;
+    hashForward: string;
 };
+
 /**
  * 验证错误
  * @param reqData 错误数据

@@ -67,6 +67,9 @@ export const useLoginStore = defineStore('login', () => {
     const validatorPubkey =
         '374462096f4ccdc90b97c0201d0ad8ff67da224026dc20e61c107f577db537d049648511e4e922ce74a0ff7494eeac72317e60a48cb2a71af21e4e2258fcca36';
 
+    // 用户的number
+    const userNumber = ref(-1);
+
     // 登录：随机选择账户, 发送socket登录, 发送blinding number到服务器端
     async function processAccount(privateKey: string[]) {
         // 使account变为{key, address}的格式
@@ -180,9 +183,13 @@ export const useLoginStore = defineStore('login', () => {
                 let wallet = new ethers.Wallet(key);
                 let signedAuthString = await wallet.signMessage(authString);
 
-                // 对于第一个temp account，需要接收token hash
+                // app real name account: 需要接收token hash
+                // relay real name account: 需要接收validator询问
+                // 其他账户: 仅仅连接socket
                 if (index === 0 && isApplicant) {
-                    socketInit(address, signedAuthString, true);
+                    socketInit(address, signedAuthString, true, true);
+                } else if (index === 0 && !isApplicant) {
+                    socketInit(address, signedAuthString, true, false);
                 } else {
                     socketInit(address, signedAuthString);
                 }
@@ -215,6 +222,7 @@ export const useLoginStore = defineStore('login', () => {
         validatorAccount,
         validatorPubkey,
         sendInfo,
-        processAccount
+        processAccount,
+        userNumber
     };
 });

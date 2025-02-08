@@ -20,6 +20,7 @@ import { ref, onMounted, type Ref, onUnmounted, watch } from 'vue';
 import type { Arrow, Block, ColorMapType, Legend, Point } from './types';
 import { findIntersectionPoint, getDiagonalCorners } from './drawUtil';
 import { findLastRelay } from '@/api/reverseTrace';
+import { from } from 'rxjs';
 
 // ref 类型定义
 const flowChartRef = ref<HTMLCanvasElement | null>(null);
@@ -31,15 +32,96 @@ const inputStyle = ref<Record<string, string>>({});
 
 const blocks = ref<Block[]>([
     { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
-    { id: 2, x: 250, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 0, blindedFairInteger: -1 },
-    { id: 3, x: 250, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 0, blindedFairInteger: -1 },
-    { id: 4, x: 250, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 0, blindedFairInteger: -1 },
-    { id: 5, x: 400, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 1, blindedFairInteger: -1 },
-    { id: 6, x: 400, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 1, blindedFairInteger: -1 },
-    { id: 7, x: 400, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 1, blindedFairInteger: -1 },
-    { id: 8, x: 550, y: 50, w: 100, h: 50, text: '', color: 'yellow', chainId: 0, relayId: 2, blindedFairInteger: -1 },
-    { id: 9, x: 550, y: 150, w: 100, h: 50, text: '', color: 'green', chainId: 1, relayId: 2, blindedFairInteger: -1 },
-    { id: 10, x: 550, y: 250, w: 100, h: 50, text: '', color: 'red', chainId: 2, relayId: 2, blindedFairInteger: -1 },
+    {
+        id: 2,
+        x: 250,
+        y: 50,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'yellow',
+        relayInfo: { chainId: 0, relayId: 0, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 3,
+        x: 250,
+        y: 150,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'green',
+        relayInfo: { chainId: 1, relayId: 0, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 4,
+        x: 250,
+        y: 250,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'red',
+        relayInfo: { chainId: 2, relayId: 0, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 5,
+        x: 400,
+        y: 50,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'yellow',
+        relayInfo: { chainId: 0, relayId: 1, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 6,
+        x: 400,
+        y: 150,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'green',
+        relayInfo: { chainId: 1, relayId: 1, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 7,
+        x: 400,
+        y: 250,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'red',
+        relayInfo: { chainId: 2, relayId: 1, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 8,
+        x: 550,
+        y: 50,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'yellow',
+        relayInfo: { chainId: 0, relayId: 2, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 9,
+        x: 550,
+        y: 150,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'green',
+        relayInfo: { chainId: 1, relayId: 2, blindedFairInteger: -1, hashForward: '' }
+    },
+    {
+        id: 10,
+        x: 550,
+        y: 250,
+        w: 100,
+        h: 50,
+        text: '',
+        color: 'red',
+        relayInfo: { chainId: 2, relayId: 2, blindedFairInteger: -1, hashForward: '' }
+    },
     { id: 11, x: 700, y: 150, w: 150, h: 50, text: 'validator', color: 'blue' },
     { id: 12, x: 950, y: 150, w: 150, h: 50, text: 'anonymous account', color: 'grey' }
 ]);
@@ -242,10 +324,12 @@ const draw = (): void => {
         // set colour
         let fillColour = colorMap['grey'];
         if (block.text === 'real name account' || block.text === 'validator') fillColour = colorMap['blue'];
-        else if (block.blindedFairInteger === null || block.blindedFairInteger === undefined)
+        else if (block.relayInfo?.blindedFairInteger === null || block.relayInfo?.blindedFairInteger === undefined)
             fillColour = colorMap['grey'];
-        else if (block.blindedFairInteger >= 1 && block.blindedFairInteger <= 33) fillColour = colorMap['red'];
-        else if (block.blindedFairInteger >= 34 && block.blindedFairInteger <= 66) fillColour = colorMap['green'];
+        else if (block.relayInfo?.blindedFairInteger >= 1 && block.relayInfo?.blindedFairInteger <= 33)
+            fillColour = colorMap['red'];
+        else if (block.relayInfo?.blindedFairInteger >= 34 && block.relayInfo?.blindedFairInteger <= 66)
+            fillColour = colorMap['green'];
         else fillColour = colorMap['yellow'];
         ctx.value.fillStyle = fillColour;
         ctx.value.fillRect(block.x, block.y, block.w, block.h);
@@ -293,6 +377,17 @@ const handleCanvasClick = (event: MouseEvent): void => {
 
         // 对relay询问
         if (clickedBlock.id >= 2 && clickedBlock.id <= 10) {
+            console.log('relay info:', clickedBlock.relayInfo);
+
+            socket.value!.emit('request pre relay info', {
+                from: 'trace',
+                to: clickedBlock.relayInfo?.relayRealAccount,
+                authorizationDocumentTxHash: '',
+                nextAppTempAccount: '',
+                nextHash: clickedBlock.relayInfo?.hashForward,
+                chainIndex: clickedBlock.relayInfo?.chainId,
+                relayIndex: clickedBlock.relayInfo?.relayId
+            });
         }
         // 编辑anonymous account block
         if (clickedBlock.id === 12) {
@@ -332,11 +427,38 @@ async function updateBlockText() {
         for (let lastRelay of lastRelayInfo) {
             console.log('lastRelay: ', lastRelay);
             if (lastRelay.chainIndex === 0) {
-                resetBlockText(blocks, 0, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+                updateRelayInfo(blocks, {
+                    chainIndex: 0,
+                    relayIndex: 2,
+                    preHash: lastRelay.hashForward,
+                    from: '',
+                    to: '',
+                    preAppTempAccount: '',
+                    preRelayRealnameAccount: lastRelay.lastRelayAccount,
+                    blindedFairIntNum: 100
+                });
             } else if (lastRelay.chainIndex === 1) {
-                resetBlockText(blocks, 1, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+                updateRelayInfo(blocks, {
+                    chainIndex: 1,
+                    relayIndex: 2,
+                    preHash: lastRelay.hashForward,
+                    from: '',
+                    to: '',
+                    preAppTempAccount: '',
+                    preRelayRealnameAccount: lastRelay.lastRelayAccount,
+                    blindedFairIntNum: 100
+                });
             } else if (lastRelay.chainIndex === 2) {
-                resetBlockText(blocks, 2, 2, formatAddress(lastRelay.lastRelayAccount), lastRelay.lastRelayIndex);
+                updateRelayInfo(blocks, {
+                    chainIndex: 2,
+                    relayIndex: 2,
+                    preHash: lastRelay.hashForward,
+                    from: '',
+                    to: '',
+                    preAppTempAccount: '',
+                    preRelayRealnameAccount: lastRelay.lastRelayAccount,
+                    blindedFairIntNum: 100
+                });
             }
         }
     }
@@ -370,59 +492,67 @@ onMounted(() => {
     socket.value = io('http://localhost:3000', {
         reconnectionAttempts: 5,
         reconnectionDelay: 5000,
-        query: { address: 'Trace', signedAuthString: '' }
+        query: { address: 'trace', signedAuthString: '' }
     });
     socket.value.on('connect', () => {
         console.log('relay info socket connected to server');
     });
 
     // 动态从server获取selected relay
-    socket.value.on('send relay info', (data) => {
-        // 第几条链的第几个relay, relay number, real name address
-        console.log('receive relay info, data: ', data);
-        let {
-            from,
-            to,
-            applicant,
-            relay,
-            nextRelay,
-            blindedFairIntNum,
-            fairIntegerNumber,
-            blindingNumber,
-            hashOfApplicant,
-            chainId,
-            relayId
-        } = data;
-        let formatedNextRelayAddress = formatAddress(nextRelay);
+    socket.value.on(
+        'response pre relay info',
+        (data: {
+            from: string;
+            to: string;
+            preHash: string;
+            preAppTempAccount: string;
+            preRelayRealnameAccount: string;
+            chainIndex: number;
+            relayIndex: number;
+            blindedFairIntNum: number;
+        }) => {
+            // 第几条链的第几个relay, relay number, real name address
+            console.log('receive pre relay info:', data);
+            let { chainIndex, relayIndex, preRelayRealnameAccount, preAppTempAccount, preHash } = data;
+            data.blindedFairIntNum = 100; // 临时设置为定值
 
-        // 如果是第一条链, 第一个relay, 重置text
-        if (chainId === 0 && relayId === 0) {
-            resetBlockText(blocks, 0, 0, formatedNextRelayAddress, blindedFairIntNum);
+            // 设置text, 根据文本画出block和arrow
+            updateRelayInfo(blocks, data);
+            draw();
         }
-        // 设置text, 根据文本画出block和arrow
-        resetBlockText(blocks, chainId, relayId, formatedNextRelayAddress, blindedFairIntNum);
-        draw();
-    });
+    );
 
     socket.value.on('disconnect', () => {
         console.log('relay info socket disconnected from server');
     });
 });
-const resetBlockText = (
+const updateRelayInfo = (
     blocks: Ref<Block[]>,
-    chainId: number,
-    relayId: number,
-    newText: string = '',
-    blindedFairIntNum: number
+    data: {
+        from: string;
+        to: string;
+        preHash: string;
+        preAppTempAccount: string;
+        preRelayRealnameAccount: string;
+        chainIndex: number;
+        relayIndex: number;
+        blindedFairIntNum: number;
+    }
 ) => {
+    let { chainIndex, relayIndex, preRelayRealnameAccount, preAppTempAccount, preHash, blindedFairIntNum } = data;
     // 找到匹配的区块
-    const targetBlock = blocks.value.find((block) => block.chainId === chainId && block.relayId === relayId);
+    const targetBlock = blocks.value.find(
+        (block) => block.relayInfo?.chainId === chainIndex && block.relayInfo?.relayId === relayIndex
+    );
 
     // 如果找到目标区块，更新其text值
     if (targetBlock) {
-        targetBlock.text = newText;
-        targetBlock.blindedFairInteger = blindedFairIntNum;
+        targetBlock.text = formatAddress(preRelayRealnameAccount);
+        targetBlock.relayInfo!.blindedFairInteger = blindedFairIntNum;
+        targetBlock.relayInfo!.hashForward = preHash;
+        targetBlock.relayInfo!.appTempAccount = preAppTempAccount;
     }
+    draw();
 };
 function resetAllBlocks() {
     blocks.value = blocks.value.map((block) => {

@@ -7,11 +7,17 @@ export interface Block {
     h: number;
     text: string;
     color: ColorType;
-    chainId?: number;
-    relayId?: number;
-    blindedFairInteger?: number;
+    relayInfo?: RelayInfo;
 }
 
+type RelayInfo = {
+    chainId?: number;
+    relayId?: number;
+    relayRealAccount?: string;
+    appTempAccount?: string;
+    blindedFairInteger?: number;
+    hashForward?: string; // 当前relay向下一个relay发送的正向hash
+};
 export interface Arrow {
     fromId: number;
     toId: number;

@@ -56,31 +56,54 @@
 
         <!-- 控制按钮 -->
         <div class="mt-10 flex items-center">
-            <el-button @click="prev" :disabled="activeStep === 0" size="large" color="#58704d">previous</el-button>
-            <el-button type="primary" @click="next" :disabled="activeStep === totalStep" size="large" color="#58704d"
-                >next</el-button
-            >
+            <el-button
+                @click="prev"
+                :disabled="activeStep === 0"
+                size="large"
+                class="nav-btn"
+                :class="{ 'nav-btn-disabled': activeStep === 0 }">
+                Previous
+            </el-button>
+
+            <el-button
+                type="primary"
+                @click="next"
+                :disabled="activeStep === totalStep"
+                size="large"
+                class="nav-btn ml-4"
+                :class="{ 'nav-btn-disabled': activeStep === totalStep }">
+                Next
+            </el-button>
+
             <!-- relays数组第一个relay为validator, 所以与b数组索引错开 -->
             <span v-if="relays[activeStep + 1].relayNumber != -2" class="ml-14 text-2xl">{{ nextRelayMessage }}</span>
 
             <div class="ml-auto">
                 <div v-if="activeStep <= chainLength - 1">
-                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="mr-5" color="#626aef"
-                        >chain init</el-button
-                    >
+                    <el-button @click="chainInit" v-if="activeStep === 0" size="large" class="action-btn mr-5">
+                        Chain Init
+                    </el-button>
 
-                    <el-button type="primary" @click="uploadHashAndListen" class="mr-5" size="large"
-                        >生成随机数并上传hash</el-button
-                    >
-                    <el-button type="success" @click="uploadRandomNum" size="large">上传随机数</el-button>
+                    <el-button type="primary" @click="uploadHashAndListen" class="action-btn mr-5" size="large">
+                        Generate Random & Upload Hash
+                    </el-button>
+
+                    <el-button type="success" @click="uploadRandomNum" class="action-btn" size="large">
+                        Upload Random Number
+                    </el-button>
                 </div>
                 <div v-else-if="activeStep == chainLength">
-                    <el-button type="primary" @click="appSendFinalData(chainId)" class="mr-5" size="large"
-                        >send to validator</el-button
-                    >
-                    <el-button type="primary" @click="verifyTokenAndReset(chainId)" class="mr-5" size="large"
-                        >verify token</el-button
-                    >
+                    <el-button type="primary" @click="appSendFinalData(chainId)" class="action-btn mr-5" size="large">
+                        Send to Validator
+                    </el-button>
+
+                    <el-button
+                        type="primary"
+                        @click="verifyTokenAndReset(chainId)"
+                        class="action-btn mr-5"
+                        size="large">
+                        Verify Token
+                    </el-button>
                 </div>
             </div>
         </div>
@@ -434,6 +457,94 @@ const nextRelayMessage = computed(() => {
     margin: 20px auto;
     width: 99%;
     text-align: center;
+}
+
+/* 导航按钮样式 */
+.nav-btn {
+    min-width: 100px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    background: #95a5a6; /* 柔和的灰蓝色 */
+    color: white;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-btn:hover:not(.nav-btn-disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: #7f8c8d; /* 更深的灰蓝色 */
+}
+
+.nav-btn-disabled {
+    background: #e4e7ed !important; /* Element Plus 禁用灰色 */
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+/* Previous 按钮特殊样式 */
+.nav-btn:not([type='primary']) {
+    background: #34495e; /* 深蓝灰色 */
+}
+
+.nav-btn:not([type='primary']):hover:not(.nav-btn-disabled) {
+    background: #2c3e50; /* 更深的蓝灰色 */
+}
+
+/* Next 按钮特殊样式 */
+.nav-btn[type='primary'] {
+    background: #3498db; /* 明亮的蓝色 */
+}
+
+.nav-btn[type='primary']:hover:not(.nav-btn-disabled) {
+    background: #2980b9; /* 更深的蓝色 */
+}
+
+/* 操作按钮样式 */
+.action-btn {
+    min-width: 120px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Chain Init 按钮 */
+.action-btn[type='default'] {
+    background: #909399; /* Element Plus 灰色 */
+    color: white;
+}
+
+.action-btn[type='default']:hover {
+    background: #737579;
+}
+
+/* Generate Random & Upload Hash 按钮 */
+.action-btn[type='primary'] {
+    background: #409eff; /* Element Plus 蓝色 */
+    border-color: #409eff;
+}
+
+.action-btn[type='primary']:hover {
+    background: #337ecc;
+    border-color: #337ecc;
+}
+
+/* Upload Random Number 按钮 */
+.action-btn[type='success'] {
+    background: #67c23a; /* Element Plus 绿色 */
+    border-color: #67c23a;
+}
+
+.action-btn[type='success']:hover {
+    background: #529b2e;
+    border-color: #529b2e;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* 移除 Element Plus 表格的所有边框线 */

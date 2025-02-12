@@ -56,6 +56,7 @@ export interface TxHash {
 export type CombinedData = {
     appToRelayData?: AppToRelayData & DataHash & InfoHash & TxHash;
     preToNextRelayData?: PreToNextRelayData & DataHash & TxHash;
+    blindedFairIntNum?: number;
 };
 
 // data: pre applicant temp   and   pre relay -> next relay

@@ -287,6 +287,7 @@ async function verifyData(data: CombinedData) {
 
     let infoHash = data.appToRelayData.infoHash;
     let blindedFairIntNum = await getBlindedFairIntByInfoHash(infoHash, b);
+    data.blindedFairIntNum = blindedFairIntNum; // 保存从链上获取的随机数
     console.log('blindedFairIntNum:', blindedFairIntNum);
 
     // 验证l

@@ -8,6 +8,7 @@ export interface Block {
     text: string;
     color: ColorType;
     relayInfo?: RelayInfo;
+    isAskSuccess?: boolean; // 询问是否成功
 }
 
 type RelayInfo = {

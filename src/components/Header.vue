@@ -82,7 +82,7 @@ function triggerFileInput() {
     if (fileInput.value != null) fileInput.value.click();
 }
 
-function handleFileChange(event: Event) {
+async function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0]; // 可选链
     if (!file) {
@@ -109,8 +109,10 @@ function handleFileChange(event: Event) {
                 console.log('backend listen success: relay listens hash, pre relay info, pre app info');
                 // 提取数字, 为validator询问做准备
                 let number = file.name.match(/\d+/g);
-                let userNumber = toRef(useLoginStore(), 'userNumber');
-                if (number && userNumber) userNumber.value = Number(number[0]);
+                if (number) {
+                    loginStore.userNumber = Number(number[0]); // 直接更新store中的值
+                }
+                // console.log('userNumber: ', loginStore.userNumber);
             } catch (e) {
                 console.log(e);
             }

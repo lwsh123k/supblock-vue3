@@ -7,9 +7,13 @@
             v-if="currentEditingBlock"
             v-model="editingText"
             :style="inputStyle"
-            @keyup.enter="updateBlockText"
+            @keyup.enter="updateLastRelayInfo"
             @blur="cancelEditing"
             autofocus />
+        <!-- 授权文件选项 -->
+        <div class="auth-container">
+            <label> <input type="checkbox" v-model="hasAuthorizationDocument" /> Has Authorization Document </label>
+        </div>
     </div>
 </template>
 
@@ -21,6 +25,7 @@ import type { Arrow, Block, ColorMapType, Legend, Point } from './types';
 import { findIntersectionPoint, getDiagonalCorners } from './drawUtil';
 import { findLastRelay } from '@/api/reverseTrace';
 import { from } from 'rxjs';
+import { getBlindedFairIntNum } from '@/api';
 
 // ref 类型定义
 const flowChartRef = ref<HTMLCanvasElement | null>(null);
@@ -29,6 +34,11 @@ const ctx = ref<CanvasRenderingContext2D | null>(null);
 const currentEditingBlock = ref<Block | null>(null);
 const editingText = ref<string>('');
 const inputStyle = ref<Record<string, string>>({});
+// 实名账户地址
+const realNameAccount = ref<string>('');
+
+// Add authorization document state
+const hasAuthorizationDocument = ref<boolean>(false);
 
 const blocks = ref<Block[]>([
     { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
@@ -194,17 +204,53 @@ const drawArrowhead = (x: number, y: number, angle: number): void => {
     ctx.value.fill();
 };
 
-const drawConnection = (fromX: number, fromY: number, toX: number, toY: number): void => {
+// 添加一个新的函数来绘制红色叉号
+const drawRedCross = (x: number, y: number, size: number = 10): void => {
+    if (!ctx.value) return;
+
+    ctx.value.save();
+    ctx.value.strokeStyle = '#FF0000';
+    ctx.value.lineWidth = 3;
+
+    // 画叉号
+    ctx.value.beginPath();
+    ctx.value.moveTo(x - size, y - size);
+    ctx.value.lineTo(x + size, y + size);
+    ctx.value.moveTo(x + size, y - size);
+    ctx.value.lineTo(x - size, y + size);
+    ctx.value.stroke();
+
+    ctx.value.restore();
+};
+
+// 修改箭头绘制函数
+const drawConnection = (fromX: number, fromY: number, toX: number, toY: number, isRejected: boolean = false): void => {
     if (!ctx.value) return;
 
     const angle = Math.atan2(toY - fromY, toX - fromX);
 
+    // 保存当前上下文状态
+    ctx.value.save();
+
+    // 画线
     ctx.value.beginPath();
     ctx.value.moveTo(fromX, fromY);
     ctx.value.lineTo(toX, toY);
     ctx.value.stroke();
 
+    // 画箭头
     drawArrowhead(toX, toY, angle);
+
+    // 如果是拒绝状态，在箭头中间画一个红色叉号
+    if (isRejected) {
+        // 使用实际的连接点来计算中点，而不是方块中心点
+        const midX = fromX + (toX - fromX) * 0.5;
+        const midY = fromY + (toY - fromY) * 0.5;
+        drawRedCross(midX, midY, 8); // 稍微调小叉号尺寸以更好看
+    }
+
+    // 恢复上下文状态
+    ctx.value.restore();
 };
 
 const drawBidirectionalArrow = (fromBlock: Block, toBlock: Block, offset: number): void => {
@@ -279,33 +325,50 @@ const draw = (): void => {
         const from = blocks.value.find((b) => b.id === fromId)!;
         const to = blocks.value.find((b) => b.id === toId)!;
 
-        // from和to text不为空
-        if (from.text === '' || to.text === '') return;
+        // 判断是否与 real name account 相连
+        const isToRealName = toId === 1;
+        // 判断是否需要绘制箭头
+        let shouldDraw = false;
 
-        const fromCenterX = from.x + from.w / 2;
-        const fromCenterY = from.y + from.h / 2;
-        const toCenterX = to.x + to.w / 2;
-        const toCenterY = to.y + to.h / 2;
-
-        const dx = toCenterX - fromCenterX;
-        const dy = toCenterY - fromCenterY;
-
-        let startPoint: Point;
-        let endPoint: Point;
-
-        // 判断是否为斜线连接(非纯水平、非纯垂直)
-        if (dx !== 0 && dy !== 0) {
-            // 斜线情况使用对角点连接
-            const { start, end } = getDiagonalCorners(from, to);
-            startPoint = start;
-            endPoint = end;
-        } else {
-            // 水平或垂直情况使用原逻辑
-            startPoint = { x: fromCenterX, y: fromCenterY };
-            endPoint = findIntersectionPoint(fromCenterX, fromCenterY, toCenterX, toCenterY, to);
+        // 特判：real name account 与 relay 的连接
+        if (isToRealName) {
+            // 是否询问过from
+            if (typeof from.isAskSuccess === 'boolean') {
+                shouldDraw = true;
+            }
+        }
+        // from和to text不为空或者是询问过(不管成功失败)都要画箭头
+        else if ((from.text !== '' && to.text !== '') || typeof from.isAskSuccess === 'boolean') {
+            shouldDraw = true;
         }
 
-        drawConnection(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+        // 如果需要绘制箭头，则绘制箭头
+        if (shouldDraw) {
+            const fromCenterX = from.x + from.w / 2;
+            const fromCenterY = from.y + from.h / 2;
+            const toCenterX = to.x + to.w / 2;
+            const toCenterY = to.y + to.h / 2;
+
+            const dx = toCenterX - fromCenterX;
+            const dy = toCenterY - fromCenterY;
+
+            let startPoint: Point;
+            let endPoint: Point;
+
+            // 计算实际的连接点
+            if (dx !== 0 && dy !== 0) {
+                const { start, end } = getDiagonalCorners(from, to);
+                startPoint = start;
+                endPoint = end;
+            } else {
+                startPoint = { x: from.x, y: fromCenterY };
+                endPoint = findIntersectionPoint(fromCenterX, fromCenterY, toCenterX, toCenterY, to);
+            }
+
+            // 是否要画叉号
+            let isRejected = from.isAskSuccess === false;
+            drawConnection(startPoint.x, startPoint.y, endPoint.x, endPoint.y, isRejected);
+        }
     });
 
     // Draw bidirectional arrows
@@ -382,7 +445,7 @@ const handleCanvasClick = (event: MouseEvent): void => {
             socket.value!.emit('request pre relay info', {
                 from: 'trace',
                 to: clickedBlock.relayInfo?.relayRealAccount,
-                authorizationDocumentTxHash: '',
+                authorizationDocumentTxHash: hasAuthorizationDocument.value,
                 nextAppTempAccount: '',
                 nextHash: clickedBlock.relayInfo?.hashForward,
                 chainIndex: clickedBlock.relayInfo?.chainId,
@@ -414,7 +477,7 @@ const handleCanvasClick = (event: MouseEvent): void => {
         // handleBlockClick(clickedBlock);
     }
 };
-async function updateBlockText() {
+async function updateLastRelayInfo() {
     if (currentEditingBlock.value) {
         let text = editingText.value;
         currentEditingBlock.value.text = editingText.value;
@@ -435,7 +498,7 @@ async function updateBlockText() {
                     to: '',
                     preAppTempAccount: '',
                     preRelayRealnameAccount: lastRelay.lastRelayAccount,
-                    blindedFairIntNum: 100
+                    blindedFairIntNum: lastRelay.lastRelayIndex
                 });
             } else if (lastRelay.chainIndex === 1) {
                 updateRelayInfo(blocks, {
@@ -446,7 +509,7 @@ async function updateBlockText() {
                     to: '',
                     preAppTempAccount: '',
                     preRelayRealnameAccount: lastRelay.lastRelayAccount,
-                    blindedFairIntNum: 100
+                    blindedFairIntNum: lastRelay.lastRelayIndex
                 });
             } else if (lastRelay.chainIndex === 2) {
                 updateRelayInfo(blocks, {
@@ -457,7 +520,7 @@ async function updateBlockText() {
                     to: '',
                     preAppTempAccount: '',
                     preRelayRealnameAccount: lastRelay.lastRelayAccount,
-                    blindedFairIntNum: 100
+                    blindedFairIntNum: lastRelay.lastRelayIndex
                 });
             }
         }
@@ -498,10 +561,10 @@ onMounted(() => {
         console.log('relay info socket connected to server');
     });
 
-    // 动态从server获取selected relay
+    // 获取pre relay info
     socket.value.on(
         'response pre relay info',
-        (data: {
+        async (data: {
             from: string;
             to: string;
             preHash: string;
@@ -510,15 +573,32 @@ onMounted(() => {
             chainIndex: number;
             relayIndex: number;
             blindedFairIntNum: number;
+            isAskSuccess: boolean;
         }) => {
             // 第几条链的第几个relay, relay number, real name address
             console.log('receive pre relay info:', data);
-            let { chainIndex, relayIndex, preRelayRealnameAccount, preAppTempAccount, preHash } = data;
-            data.blindedFairIntNum = 100; // 临时设置为定值
 
-            // 设置text, 根据文本画出block和arrow
+            // 询问是否成功
+            if (data.isAskSuccess === false) {
+                console.log('pre relay reject');
+            } else {
+                // 我们找到的是pre relay的实名账户, 其实并不知道它对用的编号是什么, 也就不知道颜色
+                // 所以需要根据pre relay的实名账户来找到对应的编号
+                data.blindedFairIntNum = (await getBlindedFairIntNum(data.preRelayRealnameAccount)).result;
+                // console.log('blindedFairIntNum: ', data.blindedFairIntNum);
+            }
+
+            // 找到是谁询问的(current block): 根据chainId, relayIndex+1, 找到对应的block
+            const targetBlock = blocks.value.find(
+                (block) =>
+                    block.relayInfo?.chainId === data.chainIndex && block.relayInfo?.relayId === data.relayIndex + 1
+            );
+            if (targetBlock) {
+                targetBlock.isAskSuccess = data.isAskSuccess;
+                console.log('targetBlock: ', targetBlock);
+            }
+            // 更新pre block
             updateRelayInfo(blocks, data);
-            draw();
         }
     );
 
@@ -540,19 +620,29 @@ const updateRelayInfo = (
     }
 ) => {
     let { chainIndex, relayIndex, preRelayRealnameAccount, preAppTempAccount, preHash, blindedFairIntNum } = data;
-    // 找到匹配的区块
+    // 更新real name account
+    if (relayIndex === -1 && preHash !== '') {
+        blocks.value[0].text = preAppTempAccount;
+        return;
+    }
+    // 更新其他block
     const targetBlock = blocks.value.find(
         (block) => block.relayInfo?.chainId === chainIndex && block.relayInfo?.relayId === relayIndex
     );
 
-    // 如果找到目标区块，更新其text值
     if (targetBlock) {
-        targetBlock.text = formatAddress(preRelayRealnameAccount);
-        targetBlock.relayInfo!.blindedFairInteger = blindedFairIntNum;
-        targetBlock.relayInfo!.hashForward = preHash;
-        targetBlock.relayInfo!.appTempAccount = preAppTempAccount;
+        if (blindedFairIntNum === -2) {
+            // relay拒绝回应的情况
+            // targetBlock.text = 'Rejected';
+            targetBlock.relayInfo!.blindedFairInteger = -2;
+        } else {
+            targetBlock.text = formatAddress(preRelayRealnameAccount);
+            targetBlock.relayInfo!.blindedFairInteger = blindedFairIntNum;
+            targetBlock.relayInfo!.hashForward = preHash;
+            targetBlock.relayInfo!.appTempAccount = preAppTempAccount;
+            targetBlock.relayInfo!.relayRealAccount = preRelayRealnameAccount;
+        }
     }
-    draw();
 };
 function resetAllBlocks() {
     blocks.value = blocks.value.map((block) => {
@@ -587,5 +677,14 @@ input {
     border: 1px solid #ccc;
     padding: 2px;
     box-sizing: border-box;
+}
+.auth-container {
+    margin-top: 10px;
+}
+.auth-container label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
 }
 </style>

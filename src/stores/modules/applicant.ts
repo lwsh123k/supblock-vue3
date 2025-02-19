@@ -86,7 +86,7 @@ export const useApplicantStore = defineStore('applicantStore', () => {
             };
 
             // the last two is validator: chainLength+1, chainLength+2
-            if (chainId > chainLength) relays[chainId][j] = relays[chainId][0];
+            if (j > chainLength) relays[chainId][j] = relays[chainId][0];
         }
     }
 

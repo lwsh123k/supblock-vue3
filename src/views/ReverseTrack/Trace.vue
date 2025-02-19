@@ -633,10 +633,11 @@ const updateRelayInfo = (
     if (targetBlock) {
         if (blindedFairIntNum === -2) {
             // relay拒绝回应的情况
-            // targetBlock.text = 'Rejected';
+            targetBlock.text = '';
             targetBlock.relayInfo!.blindedFairInteger = -2;
         } else {
-            targetBlock.text = formatAddress(preRelayRealnameAccount);
+            // targetBlock.text = formatAddress(preRelayRealnameAccount);
+            targetBlock.text = blindedFairIntNum.toString();
             targetBlock.relayInfo!.blindedFairInteger = blindedFairIntNum;
             targetBlock.relayInfo!.hashForward = preHash;
             targetBlock.relayInfo!.appTempAccount = preAppTempAccount;
@@ -646,12 +647,15 @@ const updateRelayInfo = (
 };
 function resetAllBlocks() {
     blocks.value = blocks.value.map((block) => {
-        // applicant real name, anonymous, validaor block
-        if (block.id === 1 || block.id > 10) {
-            return block;
-        } else return { ...block, text: '', blindedFairInteger: -1 };
+        // applicant real name, anonymous, validator block
+        if (block.id === 1) {
+            return { ...block, text: 'real name account', isAskSuccess: undefined };
+        } else if (block.id === 11) {
+            return { ...block, text: 'validator', isAskSuccess: undefined };
+        } else if (block.id === 12) {
+            return { ...block, text: 'anonymous account', isAskSuccess: undefined };
+        } else return { ...block, text: '', isAskSuccess: undefined, blindedFairInteger: -1 };
     });
-    // draw(); // 已经在onMounted中监听blocks变化
 }
 
 // 组件卸载时清理

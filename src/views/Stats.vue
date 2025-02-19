@@ -8,95 +8,127 @@
 import 'echarts';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
-import { PieChart } from 'echarts/charts';
-import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components';
+import { BarChart } from 'echarts/charts';
+import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components';
 import VChart, { THEME_KEY } from 'vue-echarts';
-import { ref, provide, onMounted, shallowRef, onBeforeMount } from 'vue';
-import requests from '@/api/requests';
+import { ref, provide, onMounted, shallowRef } from 'vue';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { getData } from '@/api/chartData';
 
-use([CanvasRenderer, PieChart, TitleComponent, TooltipComponent, LegendComponent]);
+use([CanvasRenderer, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent]);
+
 const loading = shallowRef(false);
 const loadingOptions = {
-    text: 'Loading…',
+    text: '加载中...',
     color: '#4ea397',
     maskColor: 'rgba(255, 255, 255, 0.4)'
 };
+
 provide(THEME_KEY, 'dark');
-let option = ref({
+
+const option = ref({
+    title: {
+        text: 'Gas Statistics',
+        left: 'center'
+    },
+    tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+            type: 'shadow'
+        }
+    },
+    legend: {
+        top: '10%'
+    },
+    grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '20%',
+        containLabel: true
+    },
     dataset: {
-        dimensions: ['item', 'applicant hash gas', 'applicant num gas', 'relay hash gas', 'relay num gas'],
-        source: [['relay 0'], ['relay 1']]
+        dimensions: [
+            'item',
+            'applicant hash gas',
+            'applicant num gas',
+            'applicant reupload gas',
+            'relay hash gas',
+            'relay num gas',
+            'relay reupload gas'
+        ],
+        source: []
     },
     xAxis: {
-        type: 'category',
-        data: Array.from({ length: 6 }, (v, i) => `relay ${i}`)
+        type: 'category'
     },
-    yAxis: {},
-    legend: {
-        data: ['applicant hash gas', 'applicant num gas', 'relay hash gas', 'relay num gas']
+    yAxis: {
+        type: 'value',
+        name: 'Gas'
     },
     series: [
         {
             type: 'bar',
-            stack: 'total',
-            label: {
-                show: true,
-                position: 'inside'
-            }
+            stack: 'applicant',
+            name: 'applicant hash gas'
         },
         {
             type: 'bar',
-            stack: 'total',
-            label: {
-                show: true,
-                position: 'inside'
-            }
+            stack: 'applicant',
+            name: 'applicant num gas'
         },
         {
             type: 'bar',
-            stack: 'total',
-            label: {
-                show: true,
-                position: 'inside'
-            }
+            stack: 'applicant',
+            name: 'applicant reupload gas'
         },
         {
             type: 'bar',
-            stack: 'total',
-            label: {
-                show: true,
-                position: 'inside'
-            }
+            stack: 'relay',
+            name: 'relay hash gas'
+        },
+        {
+            type: 'bar',
+            stack: 'relay',
+            name: 'relay num gas'
+        },
+        {
+            type: 'bar',
+            stack: 'relay',
+            name: 'relay reupload gas'
         }
     ]
 });
 
-// 分析chain0, 获取gas相关数据
-let applicantStore = useApplicantStore();
-let datas = applicantStore.datas[0];
-interface Account {
-    addressA: string;
-    hashA: string;
-    addressB: string;
-    hashB: string;
-}
-onBeforeMount(async () => {
-    console.log('requesting data...');
-    let reqData: Account[] = [];
-    for (let val of datas) {
-        let temp: Account = {
+const applicantStore = useApplicantStore();
+
+async function fetchData() {
+    try {
+        loading.value = true;
+        const datas = applicantStore.datas[0];
+        if (!datas?.length) {
+            console.warn('No data available');
+            return;
+        }
+
+        const reqData = datas.slice(0, 3).map((val) => ({
             addressA: val[0].address,
             hashA: val[0].hash,
             addressB: val[1].address,
             hashB: val[1].hash
-        };
-        reqData.push(temp);
+        }));
+
+        const dataset = await getData(reqData);
+        option.value.dataset = dataset;
+    } catch (error) {
+        console.error('Error fetching data:', error);
+    } finally {
+        loading.value = false;
     }
-    let dataset = await getData(reqData);
-    console.log(dataset);
-    option.value.dataset = dataset;
+}
+
+onMounted(() => {
+    fetchData();
 });
 </script>
 

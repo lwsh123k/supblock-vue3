@@ -410,7 +410,8 @@ const resetBlockText = (
 
     // 如果找到目标区块，更新其text值
     if (targetBlock) {
-        targetBlock.text = newText;
+        // targetBlock.text = newText;
+        targetBlock.text = blindedFairIntNum.toString();
         targetBlock.blindedFairInteger = blindedFairIntNum;
     }
 

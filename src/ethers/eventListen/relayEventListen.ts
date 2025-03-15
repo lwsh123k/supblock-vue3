@@ -373,7 +373,8 @@ let processFairIntNumReq: TypedListener<ReqHashUploadEvent> = async (from, to, i
         r: null,
         status: 'hash已上传',
         hash: infoHashA,
-        index: index.toNumber()
+        index: index.toNumber(),
+        isReupload: false
     });
     dataToApplicant.push({
         role: 'relay',

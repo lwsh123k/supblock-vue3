@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { getCurrentBlockTime, getFairIntGen } from '@/ethers/contract';
 import { provider } from '@/ethers/provider';
-import { listenReqNum, listenResHash } from '@/ethers/timedListen';
+import { listenReqNum, listenResHash, listenReqReupload } from '@/ethers/timedListen';
 import { getRandom } from '@/ethers/util';
 import { useRelayStore } from '@/stores/modules/relay';
 import { useLoginStore } from '@/stores/modules/login';
@@ -144,6 +144,7 @@ async function uploadHashAndListen() {
     dataToApplicant[step].isUpload = false;
     dataToApplicant[step].isReupload = false;
     dataToApplicant[step].randomText = ni.toString();
+    dataToApplicant[step].hasChecked = false;
 
     //上传hash
     await writeFair.setResHash(addressA, hash);
@@ -180,6 +181,21 @@ async function uploadHashAndListen() {
                 dataToApplicant[step].isReupload = true;
                 // 给下一个relay发消息
             }
+        });
+
+    // 监听请求方随机数重传事件
+    listenReqReupload(addressA, addressB)
+        .then((result) => {
+            console.log('监听到了请求方随机数重传', result);
+            dataFromApplicant[step].randomNumBefore = result.ni;
+            dataFromApplicant[step].randomText = dataFromApplicant[step].randomText + '/' + result.ni;
+            console.log('app reuploaded random num to relay: ', result.ni);
+            dataFromApplicant[step].r = result.ri;
+            dataFromApplicant[step].status = '随机数已重新上传';
+            dataFromApplicant[step].isReupload = true;
+        })
+        .catch((error) => {
+            console.log('没有监听到请求方随机数重传, reason: ', error.message);
         });
 
     // try {
@@ -262,6 +278,7 @@ watchEffect(async () => {
             dataToApplicant[i].hasChecked === false
         ) {
             try {
+                console.log('开始检查随机数');
                 // 创建合约实例
                 let { key: privateKey, address: myAddress } = allAccountInfo.realNameAccount; // 使用实名账户进行公平随机数生成
                 const readOnlyFair = await getFairIntGen();
@@ -283,7 +300,7 @@ watchEffect(async () => {
                     dataToApplicant[i].isReupload = true;
                 } else console.log('随机数正确 ');
 
-                dataToApplicant[i].hasChecked === true;
+                dataToApplicant[i].hasChecked = true;
             } catch (error) {
                 console.log(error);
             }

@@ -1,10 +1,10 @@
 import { useLoginStore } from '@/stores/modules/login';
-import { relayReceivedData, type RelayResData } from './chainDataType';
+import { useSocketStore } from '@/stores/modules/socket';
+import { Wallet } from 'ethers';
 import { getStoreData } from '../contract';
 import { provider } from '../provider';
-import { Wallet } from 'ethers';
-import { addHexAndMod, ensure0xPrefix, getEncryptData, keccak256 } from '../util';
-import { useSocketStore } from '@/stores/modules/socket';
+import { ensure0xPrefix, getEncryptData, keccak256 } from '../util';
+import { relayReceivedData, type RelayResData } from './chainDataType';
 
 // next relay通过socket和区块链, 使用匿名账户回复pre applicant account, 要使用的实名账户
 export async function sendNextRelay2AppData(preApplicantTempAccount: string, applicantDataHash: string) {

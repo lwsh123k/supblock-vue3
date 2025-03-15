@@ -46,6 +46,7 @@ export interface AppToRelayData {
     hash: string;
     status: string;
     index: number;
+    isReupload?: boolean;
 }
 export interface RelayToAppData {
     role: string;

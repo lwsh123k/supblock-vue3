@@ -242,6 +242,8 @@ async function uploadHashAndListen() {
         addressB
     );
 
+    console.log(`setup listener: addressA=${addressA}, addressB=${addressB}, step=${step}`);
+
     // 同时监听hash和随机数
     hashPromise
         .then((resHash) => {
@@ -253,7 +255,7 @@ async function uploadHashAndListen() {
         .catch((error) => {
             // 防止hash没监听到, 但随机数监听到
             if (datas[step][1].status !== '随机数已上传') datas[step][1].status = '未在30s内上传hash';
-            console.log(error);
+            console.log('hash监听错误:', error);
             // hashPromise失败，就停止numPromise
             rejectAndCleanup('hash not upload, reject listen upload');
             reuploadReject('hash not upload, reject listen reupload');
@@ -296,15 +298,21 @@ async function uploadHashAndListen() {
     reuploadPromise
         .then(async (resReuploadNum) => {
             let { ni } = resReuploadNum;
+            console.log(`relay reupload: from=${resReuploadNum.from}, to=${resReuploadNum.to}, ni=${ni}`);
             datas[step][1].randomNumAfter = ni;
             datas[step][1].status = '随机数已重新上传';
             datas[step][1].randomText = datas[step][1].randomNumBefore + ' / ' + ni.toString();
             datas[step][1].isReupload = true;
-            console.log('监听到relay重传随机数');
             await setNextRelayAnonymousAccount(chainId, ++currentStep, ni, 'event listening A');
         })
         .catch((error: Error) => {
-            console.log('没有监听到随机数重传');
+            if (error.message === 'not upload reupload random num') {
+                console.log('重传监听超时');
+            } else if (error.message === 'hash not upload, reject listen reupload') {
+                console.log('由于hash未上传，取消了重传监听');
+            } else {
+                console.log('重传监听发生其他错误:', error);
+            }
         });
 
     await hashUploadPromise; // 等待hash上传完成

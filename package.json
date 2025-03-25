@@ -3,6 +3,11 @@
     "version": "0.0.0",
     "private": true,
     "type": "module",
+    "packageManager": "pnpm@8.15.1",
+    "engines": {
+        "pnpm": "^8",
+        "node": ">=18"
+    },
     "scripts": {
         "dev": "vite",
         "build": "run-p type-check \"build-only {@}\" --",

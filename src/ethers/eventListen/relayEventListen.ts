@@ -18,6 +18,8 @@ import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
 import { provider } from '../provider';
 import { getAccountInfoByInfoHash, getBlindedFairIntByInfoHash } from '../chainData/getChainData';
 import type { App2RelayEventEvent, Pre2NextEventEvent } from '../types/StoreData';
+import type { TypedListener } from '../types/common';
+import type { ReqHashUploadEvent } from '../types/FairInteger';
 
 // relay: listen hash, listen pre relay data, listen pre applicant data
 export async function backendListen() {

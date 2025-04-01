@@ -26,7 +26,7 @@ type HashResult = {
 export async function listenResHash(
     addressA: string,
     addressB: string,
-    timeout: number = 30000 + 20000
+    timeout: number = 30000 + 10000
 ): Promise<HashResult> {
     const fairIntGen = await getFairIntGen();
     let listenser: TypedListener<ResHashUploadEvent>;
@@ -61,7 +61,7 @@ type NumResult = { from: string; to: string; ni: number; ri: string; t: number; 
 export async function stopableListenResNum(
     reqAddress: string,
     resAddress: string,
-    timeout: number = 2 * (30000 + 20000)
+    timeout: number = 2 * (30000 + 10000)
 ): Promise<{ p: Promise<NumResult>; rejectAndCleanup: (reason?: any) => void }> {
     const fairIntGen = await getFairIntGen();
     // 定时监听
@@ -105,7 +105,7 @@ export async function stopableListenResNum(
 export async function listenReqNum(
     reqAddress: string,
     resAddress: string,
-    timeout: number = 30000 + 20000
+    timeout: number = 30000 + 10000
 ): Promise<NumResult> {
     const fairIntGen = await getFairIntGen();
     let callback: TypedListener<ReqInfoUploadEvent>, timeoutId: NodeJS.Timeout;
@@ -137,7 +137,7 @@ type ReuploadResult = { from: string; to: string; ni: number; ri: string; hashB:
 export async function stopableListenResReupload(
     reqAddress: string,
     resAddress: string,
-    timeout: number = 2 * (30000 + 20000) + 30000
+    timeout: number = 2 * (30000 + 10000) + 30000
 ): Promise<{ p: Promise<ReuploadResult>; rejectAndCleanup: (reason?: any) => void }> {
     const fairIntGen = await getFairIntGen();
     // 定时监听

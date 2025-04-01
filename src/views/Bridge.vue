@@ -231,13 +231,7 @@ async function uploadRandomNum() {
             dataToApplicant[step].randomNumAfter as number,
             dataToApplicant[step].r as string
         );
-        let blockNumber = await provider.getBlockNumber();
-        console.log(
-            'relay uploaded random num to applicant:',
-            dataToApplicant[step].randomNumAfter,
-            'at block number: ',
-            blockNumber
-        );
+
         // 改变状态
         dataToApplicant[step].status =
             dataToApplicant[step].randomNumBefore === dataToApplicant[step].randomNumAfter

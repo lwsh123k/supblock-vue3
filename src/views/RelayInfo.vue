@@ -10,11 +10,6 @@
             @mousemove="handleMouseMove"
             @mouseup="handleMouseUp"
             @dblclick="handleDoubleClick"></canvas>
-        <div class="mt-2">
-            <button @click="changeColor('red')" class="mr-2">Red</button>
-            <button @click="changeColor('green')" class="mr-2">Green</button>
-            <button @click="changeColor('yellow')">yellow</button>
-        </div>
     </div>
 </template>
 
@@ -215,9 +210,9 @@ const drawLegend = (): void => {
     const startX = (flowChartRef.value.width - totalWidth) / 2;
 
     const legends: Legend[] = [
-        { color: 'red', text: 'Verified User' },
-        { color: 'green', text: 'Anonymous User' },
-        { color: 'yellow', text: 'Validator' }
+        { color: 'red', text: 'privacy-oriented users' },
+        { color: 'yellow', text: 'protocol-compliant users' },
+        { color: 'green', text: 'security-oriented users' }
     ];
 
     legends.forEach((legend, index) => {
@@ -415,7 +410,8 @@ const resetBlockText = (
 
     // 如果找到目标区块，更新其text值
     if (targetBlock) {
-        targetBlock.text = newText;
+        // targetBlock.text = newText;
+        targetBlock.text = blindedFairIntNum.toString();
         targetBlock.blindedFairInteger = blindedFairIntNum;
     }
 

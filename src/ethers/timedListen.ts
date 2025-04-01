@@ -4,7 +4,8 @@ import type {
     ReqInfoUploadEvent,
     ResHashUploadEvent,
     ResInfoUploadEvent,
-    ResReuploadNumEvent
+    ResReuploadNumEvent,
+    ReqReuploadNumEvent
 } from './types/FairInteger';
 
 // 请求者使用, 监听响应者hash上传事件(type = 0, 请求者; type = 1, 响应者)
@@ -131,6 +132,76 @@ export async function listenReqNum(
         fairIntGen.once(filter, callback);
     });
 }
+
+// 响应者使用：监听请求方随机数重传事件
+export async function listenReqReupload(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 30000 + 30000 + 20000
+): Promise<ReuploadResult> {
+    const fairIntGen = await getFairIntGen();
+    let callback: TypedListener<ReqReuploadNumEvent>, timeoutId: NodeJS.Timeout;
+    return new Promise((resolve, reject) => {
+        let filter = fairIntGen.filters.ReqReuploadNum(reqAddress, resAddress);
+        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+            clearTimeout(timeoutId);
+            resolve({
+                from: from,
+                to: to,
+                ni: ni.toNumber(),
+                ri: ri.toHexString(),
+                hashB: originalHashB.toString()
+            });
+        };
+
+        timeoutId = setTimeout(async () => {
+            fairIntGen.off(filter, callback); // 如果没有监听到(超时), 则移除事件监听器
+            reject(new Error('not upload reupload random num'));
+        }, timeout);
+        fairIntGen.once(filter, callback);
+    });
+}
+
+// 可停止的请求方重传监听函数
+export async function stopableListenReqReupload(
+    reqAddress: string,
+    resAddress: string,
+    timeout: number = 2 * (30000 + 20000) + 30000
+): Promise<{ p: Promise<ReuploadResult>; rejectAndCleanup: (reason?: any) => void }> {
+    const fairIntGen = await getFairIntGen();
+    // 定时监听
+    let timeoutId: NodeJS.Timeout;
+    let reqFilter = fairIntGen.filters.ReqReuploadNum(reqAddress, resAddress);
+    let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
+    let callback: TypedListener<ReqReuploadNumEvent>;
+    const p = new Promise<ReuploadResult>((resolve, reject) => {
+        rejectFunc = reject;
+        timeoutId = setTimeout(async () => {
+            fairIntGen.off(reqFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
+            reject(new Error('not upload reupload random num'));
+        }, timeout);
+        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+            clearTimeout(timeoutId);
+            resolve({
+                from,
+                to,
+                ni: ni.toNumber(),
+                ri: ri.toHexString(),
+                hashB: originalHashB.toString()
+            });
+        };
+        fairIntGen.once(reqFilter, callback);
+    });
+
+    // 使用promise1拒绝promise2
+    const rejectAndCleanup = (reason: string) => {
+        clearTimeout(timeoutId);
+        fairIntGen.off(reqFilter, callback);
+        rejectFunc(reason);
+    };
+    return { p, rejectAndCleanup };
+}
+
 // relay重新上传的监听, 确定下一个随机数
 // 从hash上传就开始监听: 时间: 在原来的基础上+30s   可以由hash上传停止  num正确可以停止
 type ReuploadResult = { from: string; to: string; ni: number; ri: string; hashB: string };
@@ -145,13 +216,18 @@ export async function stopableListenResReupload(
     let resFilter = fairIntGen.filters.ResReuploadNum(resAddress, reqAddress);
     let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
     let callback: TypedListener<ResReuploadNumEvent>;
+
+    console.log(`开始监听重传事件: from=${resAddress}, to=${reqAddress}`);
+
     const p = new Promise<ReuploadResult>((resolve, reject) => {
         rejectFunc = reject;
         timeoutId = setTimeout(async () => {
+            console.log(`重传监听超时: from=${resAddress}, to=${reqAddress}, timeout=${timeout}ms`);
             fairIntGen.off(resFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
-            reject(new Error('not upload random num'));
+            reject(new Error('not upload reupload random num'));
         }, timeout);
         callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+            console.log(`收到重传事件: from=${from}, to=${to}, ni=${ni}`);
             clearTimeout(timeoutId);
             resolve({
                 from,
@@ -166,6 +242,7 @@ export async function stopableListenResReupload(
 
     // 使用promise1拒绝promise2
     const rejectAndCleanup = (reason: string) => {
+        console.log(`手动取消重传监听: from=${resAddress}, to=${reqAddress}, reason=${reason}`);
         clearTimeout(timeoutId);
         fairIntGen.off(resFilter, callback);
         rejectFunc(reason);

@@ -52,7 +52,7 @@ import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
-import FairIntTable from './FairIntegerGen/FairIntTable.vue';
+import FairIntTable from './FairIntTable.vue';
 import { useVerifyStore } from '@/stores/modules/verifySig';
 // 从store中导入数据
 let applicantStore = useApplicantStore();

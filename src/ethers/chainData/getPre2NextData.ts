@@ -78,7 +78,7 @@ export async function getRelay2ValidatorData(data: CombinedData): Promise<PreToN
     // let encryptedToken = await getEncryptData(currentApplicantTempPubkey, tokenAddc);
 
     let processedData: PreToNextRelayData = {
-        from: allAccountInfo.anonymousAccount.address,
+        from: allAccountInfo.realNameAccount.address,
         to: validatorAccount,
         preAppTempAccount: data.appToRelayData?.from!,
         preRelayAccount: data.preToNextRelayData?.from!,

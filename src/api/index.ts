@@ -34,8 +34,15 @@ export const getPubkeyByAddress = async (address: string) => {
     return info;
 };
 
+// 根据实名账户获得编号
+export const getBlindedFairIntNum = async (realNameAddress: string) => {
+    let info = await requests.post<any, { result: number }>(`/getBlindedFairIntNum`, {
+        realNameAddress: realNameAddress
+    });
+    return info;
+};
+
 // 获得合约地址
-// 获得账户信息
 interface contractAddress {
     StoreData: string;
     FairInteger: string;

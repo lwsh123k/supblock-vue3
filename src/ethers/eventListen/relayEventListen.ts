@@ -1,6 +1,5 @@
 import { useLoginStore } from '@/stores/modules/login';
 import { getFairIntGen, getStoreData } from '../contract';
-import { BigNumber, Wallet } from 'ethers';
 import { useRelayStore } from '@/stores/modules/relay';
 import { ensure0xPrefix, getDecryptData, keccak256, verifyHashBackward, verifyHashForward } from '../util';
 import { sendNextRelay2AppData } from '../chainData/getRelay2AppData';
@@ -315,6 +314,7 @@ async function verifyData(data: CombinedData) {
 
     let infoHash = data.appToRelayData.infoHash;
     let blindedFairIntNum = await getBlindedFairIntByInfoHash(infoHash, b);
+    data.blindedFairIntNum = blindedFairIntNum; // 保存从链上获取的随机数
     console.log('blindedFairIntNum:', blindedFairIntNum);
 
     // 验证l
@@ -376,3 +376,41 @@ function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRel
     //     data2NextRelay.t = data.t;
     // }
 }
+
+let processFairIntNumReq: TypedListener<ReqHashUploadEvent> = async (from, to, infoHashA, tA, tB, index, event) => {
+    let { dataFromApplicant, dataToApplicant } = useRelayStore();
+    console.log('app -> relay: hash upload event detected');
+    console.log('data: ', {
+        applicant: from,
+        relayRealNameAccount: to,
+        infoHashA,
+        tA: tA.toNumber(),
+        tB: tB.toNumber(),
+        index: index.toString()
+    });
+    dataFromApplicant.push({
+        role: 'applicant',
+        from: from,
+        to: to,
+        randomNumBefore: null,
+        randomText: null,
+        executionTime: tA.toNumber(),
+        tA: tA.toNumber(),
+        tB: tB.toNumber(),
+        r: null,
+        status: 'hash已上传',
+        hash: infoHashA,
+        index: index.toNumber(),
+        isReupload: false
+    });
+    dataToApplicant.push({
+        role: 'relay',
+        executionTime: tB.toString(),
+        r: null,
+        hash: '',
+        status: '',
+        index: null,
+        isReupload: false,
+        isUpload: false
+    });
+};

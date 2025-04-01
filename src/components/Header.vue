@@ -21,7 +21,7 @@
             </div>
             <!-- 展示账号详情 -->
             <div v-if="allAccountInfo.realNameAccount.address">
-                <div class="uploadButton nav-link hide">
+                <div class="uploadButton nav-link hide" @click="copyText">
                     {{ allAccountInfo.realNameAccount['address'] }}
                 </div>
                 <div class="moreinfo">
@@ -58,15 +58,18 @@
             <p>其他信息...</p>
             <el-avatar slot="reference" src="path_to_avatar_image.jpg"></el-avatar>
         </el-popover> -->
+        <!-- 复制成功提示 -->
+        <div v-if="copySuccessMessage" class="copy-message">
+            {{ copySuccessMessage }}
+        </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, type Ref } from 'vue';
+import { ref, toRef, type Ref } from 'vue';
 import { useLoginStore } from '@/stores/modules/login';
 import { storeToRefs } from 'pinia';
 import { backendListen } from '@/ethers/eventListen/relayEventListen';
-import { ethers } from 'ethers';
 
 const loginStore = useLoginStore();
 const { tempAccountInfo, allAccountInfo } = storeToRefs(loginStore);
@@ -79,7 +82,7 @@ function triggerFileInput() {
     if (fileInput.value != null) fileInput.value.click();
 }
 
-function handleFileChange(event: Event) {
+async function handleFileChange(event: Event) {
     const target = event.target as HTMLInputElement;
     const file = target.files?.[0]; // 可选链
     if (!file) {
@@ -103,15 +106,39 @@ function handleFileChange(event: Event) {
                 document.title = file.name.replace('account', '').replace('.txt', '');
                 // relay listens hash, pre relay info, pre app info
                 await backendListen();
-                console.log('backend listen success');
-                // tokenChain.listenAppData();
-                // tokenChain.listenPreRelayData();
+                console.log('backend listen success: relay listens hash, pre relay info, pre app info');
+                // 提取数字, 为validator询问做准备
+                let number = file.name.match(/\d+/g);
+                if (number) {
+                    loginStore.userNumber = Number(number[0]); // 直接更新store中的值
+                }
+                // console.log('userNumber: ', loginStore.userNumber);
             } catch (e) {
                 console.log(e);
             }
         }
     };
     reader.readAsText(file);
+}
+
+// 登录之后, 点击按钮复制文本
+let copySuccessMessage = ref('');
+async function copyText() {
+    try {
+        let text = tempAccountInfo.value[0].selectedAccount.at(-1)?.address;
+        if (!text) text = '';
+        await navigator.clipboard.writeText(text);
+        copySuccessMessage.value = '地址已复制到剪贴板！';
+        setTimeout(() => {
+            copySuccessMessage.value = '';
+        }, 2000);
+    } catch (err) {
+        console.error('复制失败: ', err);
+        copySuccessMessage.value = '复制地址失败。';
+        setTimeout(() => {
+            copySuccessMessage.value = '';
+        }, 2000);
+    }
 }
 </script>
 
@@ -179,5 +206,20 @@ function handleFileChange(event: Event) {
     background-color: #3f3f3f;
     color: #e8e7e3;
 }
+
+.copy-message {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #4caf50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.3s ease;
+    /* 确保显示 */
+    display: block;
+    opacity: 1;
+    z-index: 1000; /* 确保在最上层 */
+}
 </style>
-@/stores/modules/login @/stores/modules/relayEventListen

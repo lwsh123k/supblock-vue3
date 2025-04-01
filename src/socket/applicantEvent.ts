@@ -88,7 +88,7 @@ export function appRecevieValidatorData(socket: Socket) {
     });
 
     // chain confirmation
-    socket.on('chain confirmation result', (data: { result: boolean }) => {
+    socket.on('chain confirmation result', (data: { result: boolean; reason?: string }) => {
         let res = data.result;
         console.log(`chain confirmation result: ${res}`);
     });
@@ -204,7 +204,9 @@ export function appRecevieRelayData(socket: Socket) {
             // 更新next relay real name account
             // relayIndex.value[chainIndex]在extension通知applicant新页面打开时, 值已经+1
             await wait(5000); // 等待5s区块监听方式, 如果区块没有监听到, 就使用socket更新
-            relays[chainIndex][relayIndex.value[chainIndex]].realNameAccount = nextRelayRealnameAccount;
+            // 不更新第0个relay, 因为第0个relay是validator
+            if (relayIndex.value[chainIndex] > 0)
+                relays[chainIndex][relayIndex.value[chainIndex]].realNameAccount = nextRelayRealnameAccount;
         }
     );
 }
@@ -229,7 +231,7 @@ export async function send2Extension(
     socket0.emit('blinding number', data);
 }
 
-// applicant sends final data to validator
+// applicant -> validator: send final data
 export async function appSendFinalData(chainIndex: number) {
     // obtain the account corresponding to the validator
     let { tempAccountInfo, chainLength } = useLoginStore();

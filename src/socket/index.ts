@@ -1,19 +1,18 @@
-import { defineStore, storeToRefs } from 'pinia';
 import { reactive, ref, toRef } from 'vue';
 import { io } from 'socket.io-client';
-import type { Socket } from 'socket.io-client';
-import { getStoreData } from '@/ethers/contract';
-import { getEncryptData } from '@/ethers/util';
-import { getAccountInfo } from '@/api';
-import { Wallet } from 'ethers';
-import { provider } from '@/ethers/provider';
 import { bindExtension } from './extensionEvent';
 import { appGetSignature, appRecevieRelayData, appRecevieValidatorData } from './applicantEvent';
 import { useSocketStore } from '@/stores/modules/socket';
+import { relayWaitForAsk } from './reverseTrack';
 
 // 每个正在使用的账号, 都要连接socket, 绑定extension, chain initialization事件
 // 在login store调用
-export function socketInit(address: string, signedAuthString: string, isFistTempAccount: boolean = false) {
+export function socketInit(
+    address: string,
+    signedAuthString: string,
+    isFistTempAccount: boolean = false,
+    isApplicant: boolean = false
+) {
     let socketMap = toRef(useSocketStore(), 'socketMap');
     // initiate socket
     let socket = io('http://localhost:3000', {
@@ -44,8 +43,13 @@ export function socketInit(address: string, signedAuthString: string, isFistTemp
     // receive data from next relay
     appRecevieRelayData(socket);
 
-    // get signature hash, only use firsd temp account
-    if (isFistTempAccount) {
+    // applicant: get signature hash, only use firsd temp account
+    if (isApplicant && isFistTempAccount) {
         appGetSignature(socket);
+    }
+
+    // relay监听validator询问自己, 使用实名账号
+    if (!isApplicant && isFistTempAccount) {
+        relayWaitForAsk(socket);
     }
 }

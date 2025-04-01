@@ -21,7 +21,7 @@ export type AppReceivedData = {
     endingAccount: string | null;
 };
 
-// current relay -> next relay
+// pre relay -> next relay
 export type PreToNextRelayData = {
     from: null | string; // current relay anonymous account
     to: null | string; // relay
@@ -56,6 +56,7 @@ export interface TxHash {
 export type CombinedData = {
     appToRelayData?: AppToRelayData & DataHash & InfoHash & TxHash;
     preToNextRelayData?: PreToNextRelayData & DataHash & TxHash;
+    blindedFairIntNum?: number;
 };
 
 // data: pre applicant temp   and   pre relay -> next relay

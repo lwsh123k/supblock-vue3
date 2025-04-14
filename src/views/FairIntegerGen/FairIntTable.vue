@@ -68,10 +68,10 @@
             <el-button
                 type="primary"
                 @click="next"
-                :disabled="activeStep === totalStep"
+                :disabled="activeStep === totalStep - 1"
                 size="large"
                 class="nav-btn ml-4"
-                :class="{ 'nav-btn-disabled': activeStep === totalStep }">
+                :class="{ 'nav-btn-disabled': activeStep === totalStep - 1 }">
                 Next
             </el-button>
 
@@ -474,7 +474,7 @@ const nextRelayMessage = computed(() => {
     border-radius: 8px;
     transition: all 0.3s ease;
     background: #95a5a6; /* 柔和的灰蓝色 */
-    color: white;
+    color: white !important;
     border: none;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -486,7 +486,7 @@ const nextRelayMessage = computed(() => {
 }
 
 .nav-btn-disabled {
-    background: #e4e7ed !important; /* Element Plus 禁用灰色 */
+    background: #5772a8 !important; /* Element Plus 禁用灰色 */
     cursor: not-allowed;
     opacity: 0.7;
 }

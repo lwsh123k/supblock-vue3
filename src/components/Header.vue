@@ -181,23 +181,41 @@ async function copyText() {
 
 /* 账号详情悬浮框 */
 .moreinfo {
-    display: none;
+    /* display: none; */
+    opacity: 0;
+    visibility: hidden;
     position: absolute;
     right: 0px;
     background-color: #3f3f3f;
     width: 100%;
     border-radius: 15px;
     z-index: 99;
+    /* transition: opacity 0.3s ease, visibility 0.3s ease; */ /* 添加过渡效果 */
+    transform: translateY(10px); /* 初始位置稍微向下偏移 */
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease,
+        transform 0.3s ease; /* 添加 transform 过渡 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* 添加阴影 */
 }
 .hide:hover + .moreinfo {
-    display: block;
+    /* display: block; */
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0); /* 悬浮时回到原位 */
 }
 
 /* 账号详情li细节 */
 .moreinfo ul li {
     margin: 10px;
     color: white;
-    font: normal 400 16px 'Inter Bold';
+    /* font: normal 400 16px 'Inter Bold'; */
+    font-size: 17px; /* 减小字体大小 */
+    font-weight: 400; /* 使用常规字重 */
+    line-height: 1.6; /* 增加行高 */
+    letter-spacing: 0.5px; /* 轻微增加字间距 */
+    word-wrap: break-word; /* 允许长地址换行 */
+    overflow-wrap: break-word; /* 备用属性，确保换行 */
 }
 
 /* 当链接处于激活状态时应用的样式 */

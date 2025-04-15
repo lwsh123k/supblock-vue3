@@ -10,6 +10,8 @@
                 :title="'Chain ' + (index + 1)"
                 :name="index + 1"
                 class="custom-collapse-item">
+                <hr />
+                <br />
                 <div class="status-container">
                     <FairIntTable
                         :datas="item"
@@ -90,8 +92,9 @@ const verifyResultMessage = computed(() => {
 <style scoped>
 .demo-collapse {
     margin-top: 20px;
-    max-height: 100vh;
+    max-height: 80vh;
     overflow-y: auto;
+    padding-bottom: 80px;
 }
 
 /* 设置 Element Plus 表格行高 */
@@ -114,7 +117,6 @@ const verifyResultMessage = computed(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: auto;
 }
 
 .status-container > * {

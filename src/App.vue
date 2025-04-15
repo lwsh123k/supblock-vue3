@@ -73,7 +73,7 @@ onUnmounted(() => {
 .scale-container {
     width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    overflow: auto;
 }
 
 .scale-content {
@@ -96,6 +96,6 @@ html,
 body {
     margin: 0;
     padding: 0;
-    overflow: hidden;
+    overflow: auto;
 }
 </style>

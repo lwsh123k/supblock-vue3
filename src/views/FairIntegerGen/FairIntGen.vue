@@ -92,9 +92,6 @@ const verifyResultMessage = computed(() => {
 <style scoped>
 .demo-collapse {
     margin-top: 20px;
-    max-height: 80vh;
-    overflow-y: auto;
-    padding-bottom: 80px;
 }
 
 /* 设置 Element Plus 表格行高 */

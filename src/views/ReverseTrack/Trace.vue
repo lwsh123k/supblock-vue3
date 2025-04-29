@@ -41,7 +41,7 @@ const realNameAccount = ref<string>('');
 const hasAuthorizationDocument = ref<boolean>(false);
 
 const blocks = ref<Block[]>([
-    { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue' },
+    { id: 1, x: 50, y: 150, w: 130, h: 50, text: 'real name account', color: 'blue', chainOfSuccess: [] },
     {
         id: 2,
         x: 250,
@@ -589,6 +589,7 @@ onMounted(() => {
             }
 
             // 找到是谁询问的(current block): 根据chainId, relayIndex+1, 找到对应的block
+            // 找到点击的哪个block
             const targetBlock = blocks.value.find(
                 (block) =>
                     block.relayInfo?.chainId === data.chainIndex && block.relayInfo?.relayId === data.relayIndex + 1
@@ -596,7 +597,31 @@ onMounted(() => {
             if (targetBlock) {
                 targetBlock.isAskSuccess = data.isAskSuccess;
                 console.log('targetBlock: ', targetBlock);
+
+                // 将同一条链的relay分组, index: -1, 0, 1, 2
+                let relayGroup = [
+                    [1, 2, 5, 8],
+                    [1, 3, 6, 9],
+                    [1, 4, 7, 10]
+                ];
+                // 将某一条链中, 当前relay之前的block的isAskSuccess清空
+                let currentChainId = targetBlock.relayInfo?.chainId!,
+                    currentRelayId = targetBlock.relayInfo?.relayId! + 1,
+                    currentArray = relayGroup[currentChainId];
+                // 不包含real name account
+                for (let i = 1; i < currentRelayId; i++) {
+                    blocks.value[currentArray[i] - 1].isAskSuccess = undefined;
+                    blocks.value[currentArray[i] - 1].text = '';
+                }
+                // 将当前链的成功取消
+                if (blocks.value[0].chainOfSuccess!.includes(currentChainId)) {
+                    blocks.value[0].chainOfSuccess!.splice(blocks.value[0].chainOfSuccess!.indexOf(currentChainId), 1);
+                }
+                if (blocks.value[0].chainOfSuccess!.length === 0) {
+                    blocks.value[0].text = 'real name account';
+                }
             }
+
             // 更新pre block
             updateRelayInfo(blocks, data);
         }
@@ -620,9 +645,12 @@ const updateRelayInfo = (
     }
 ) => {
     let { chainIndex, relayIndex, preRelayRealnameAccount, preAppTempAccount, preHash, blindedFairIntNum } = data;
-    // 更新real name account
+    // 更新real name account, 更新询问成功的链
     if (relayIndex === -1 && preHash !== '') {
         blocks.value[0].text = preAppTempAccount;
+        if (!blocks.value[0].chainOfSuccess!.includes(chainIndex)) {
+            blocks.value[0].chainOfSuccess!.push(chainIndex);
+        }
         return;
     }
     // 更新其他block

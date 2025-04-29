@@ -9,6 +9,7 @@ export interface Block {
     color: ColorType;
     relayInfo?: RelayInfo;
     isAskSuccess?: boolean; // 询问是否成功
+    chainOfSuccess?: number[]; // 询问成功的链的编号
 }
 
 type RelayInfo = {

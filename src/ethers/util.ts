@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 import { provider } from './provider';
-// import { cipher, decryptWithPrivateKey, encryptWithPublicKey } from 'eth-crypto';
-import EthCrypto, { cipher } from 'eth-crypto';
+import { encrypt, decrypt } from '@toruslabs/eccrypto';
+import { Buffer } from 'buffer';
 import { sha256 } from '@noble/hashes/sha256';
 import { bytesToHex as toHex, randomBytes } from '@noble/hashes/utils';
 import { keccak256 as keccak256Hash } from 'js-sha3';
@@ -60,11 +60,16 @@ export function getRandom(tA: number, tB: number) {
  * @returns 0x + 16进制加密数据(grpc: binding number, r)
  */
 export async function getEncryptData(publicKey: string, data: any) {
-    // publicKey: 不带0x
-    const removedPrefixpublicKey = publicKey.startsWith('0x') ? publicKey.slice(2) : publicKey;
-    let jsonData = JSON.stringify(data);
-    let encryptedData = await EthCrypto.encryptWithPublicKey(removedPrefixpublicKey, jsonData);
-    return '0x' + cipher.stringify(encryptedData);
+    const rawKey = publicKey.startsWith('0x') ? publicKey.slice(2) : publicKey;
+    if (![66, 128, 130].includes(rawKey.length)) throw new Error('Invalid public key');
+    const fullKey = ethers.SigningKey.computePublicKey('0x' + (rawKey.length === 128 ? '04' + rawKey : rawKey), false);
+    // 保留旧浏览器密文的共享密钥派生方式；解密同时兼容补零和未补零格式。
+    const encrypted = await encrypt(Buffer.from(ethers.getBytes(fullKey)), Buffer.from(JSON.stringify(data)), {
+        padding: false
+    });
+    const compressedKey = ethers.getBytes(ethers.SigningKey.computePublicKey(encrypted.ephemPublicKey, true));
+    // 原 wire 格式：IV(16) + 压缩公钥(33) + MAC(32) + AES 密文。
+    return ethers.hexlify(Buffer.concat([encrypted.iv, compressedKey, encrypted.mac, encrypted.ciphertext]));
 }
 
 /**
@@ -74,13 +79,15 @@ export async function getEncryptData(publicKey: string, data: any) {
  * @returns 原始数据
  */
 export async function getDecryptData(privateKey: string, encryptedData: string) {
-    // privatekay: 带0x前缀, encryptedData: 不带0x前缀
-    privateKey = privateKey.startsWith('0x') ? privateKey : '0x' + privateKey;
-    const removedPrefixData = encryptedData.startsWith('0x') ? encryptedData.slice(2) : encryptedData; // 去掉0x前缀
-    // console.log(privateKey, removedPrefixData, cipher.parse(removedPrefixData));
-    let jsonData = await EthCrypto.decryptWithPrivateKey(privateKey, cipher.parse(removedPrefixData));
-    let data = JSON.parse(jsonData);
-    return data;
+    const bytes = Buffer.from(ethers.getBytes(ensure0xPrefix(encryptedData)));
+    if (bytes.length < 97 || (bytes.length - 81) % 16 !== 0) throw new Error('Invalid encrypted data');
+    const plaintext = await decrypt(Buffer.from(ethers.getBytes(ensure0xPrefix(privateKey))), {
+        iv: bytes.subarray(0, 16),
+        ephemPublicKey: Buffer.from(ethers.getBytes(ethers.SigningKey.computePublicKey(bytes.subarray(16, 49), false))),
+        mac: bytes.subarray(49, 81),
+        ciphertext: bytes.subarray(81)
+    });
+    return JSON.parse(Buffer.from(plaintext).toString('utf8'));
 }
 
 /**

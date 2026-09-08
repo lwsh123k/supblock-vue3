@@ -1,20 +1,20 @@
-import crypto from 'crypto';
+import { randomBytes } from 'ethers';
 import BigInteger from 'bigi';
 import ecurve, { Point } from 'ecurve';
-import createKeccakHash from 'keccak';
+import { keccak256 as keccak256Hash } from 'js-sha3';
 import { Buffer } from 'buffer';
 
 // 生成size字节的随机数
 function random(size: number): BigInteger {
     let k: BigInteger;
     do {
-        k = BigInteger.fromBuffer(crypto.randomBytes(size));
+        k = BigInteger.fromBuffer(Buffer.from(randomBytes(size)));
     } while (k.gcd(n).toString() !== '1');
     return k;
 }
 
 function keccak256(inp: string): string {
-    return createKeccakHash('keccak256').update(inp.toString()).digest('hex');
+    return keccak256Hash(inp.toString());
 }
 
 // 生成secp256k1曲线，获取G和模数n
@@ -62,7 +62,7 @@ function setBlindMessageRandom(γ_string: string, δ_string: string) {
 function generateRandomT(size: number): BigInteger {
     let t: BigInteger;
     do {
-        t = BigInteger.fromBuffer(crypto.randomBytes(size));
+        t = BigInteger.fromBuffer(Buffer.from(randomBytes(size)));
     } while (t.compareTo(n) >= 0 || t.compareTo(BigInteger.ZERO) < 0);
     return t;
 }

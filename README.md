@@ -23,7 +23,7 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Project Setup
 
-项目通过 `packageManager` 固定使用 pnpm 10.34.5。旧版 pnpm 用户先执行 `npm install -g pnpm@10.34.5` 更新启动器；也可使用 Corepack 读取项目指定版本。在项目目录运行：
+需要 Node.js 22.12 或以上版本；浏览器加解密需要 HTTPS 或 localhost 提供的 Web Crypto。项目通过 `packageManager` 固定使用 pnpm 10.34.5。旧版 pnpm 用户先执行 `npm install -g pnpm@10.34.5` 更新启动器；也可使用 Corepack 读取项目指定版本。在项目目录运行：
 
 ```sh
 pnpm install
@@ -41,11 +41,11 @@ pnpm run dev
 pnpm run build
 ```
 
-### ethers Compatibility Checks
+### Compatibility Checks
 
-安装时自动生成 ethers 6 合约类型。以下回归仅使用合成数据，不连接区块链：
+安装时自动生成 ethers 6 合约类型。ECIES 保持旧密文格式，并兼容共享密钥补零和未补零的历史密文。以下回归仅使用合成数据，不连接区块链：
 
 ```sh
-node scripts/check-elliptic-patch.cjs
+node scripts/check-crypto-compat.cjs
 node scripts/check-ethers-events.cjs
 ```

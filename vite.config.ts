@@ -2,14 +2,17 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    // 增加nodePolyfills, 支持将nodejs模块或者函数polyfill, 使之能够在浏览器环境中使用
-    plugins: [nodePolyfills(), vue()],
+    plugins: [vue()],
     resolve: {
         alias: {
+            buffer: require.resolve('buffer/'),
+            assert: require.resolve('assert/'),
+            process: require.resolve('process/browser'),
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
     },

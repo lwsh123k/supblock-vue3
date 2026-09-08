@@ -91,6 +91,9 @@
             "socket.io-parser@>=4 <4.2.7": "4.2.7",
             "ws@>=8 <8.21.3": "8.21.3",
             "yaml@>=2 <2.9.0": "2.9.0"
+        },
+        "patchedDependencies": {
+            "elliptic@6.6.1": "patches/elliptic@6.6.1.patch"
         }
     }
 }

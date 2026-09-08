@@ -31,6 +31,11 @@ overrides:
   ws@>=8 <8.21.3: 8.21.3
   yaml@>=2 <2.9.0: 2.9.0
 
+patchedDependencies:
+  elliptic@6.6.1:
+    hash: v4jzrxohk77nktvoogfukczyri
+    path: patches/elliptic@6.6.1.patch
+
 dependencies:
   '@ethersproject/abi':
     specifier: ^5.8.0
@@ -953,7 +958,7 @@ packages:
       '@ethersproject/logger': 5.8.0
       '@ethersproject/properties': 5.8.0
       bn.js: 5.2.5
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       hash.js: 1.1.7
 
   /@ethersproject/solidity@5.8.0:
@@ -2034,7 +2039,7 @@ packages:
       browserify-rsa: 4.1.0
       create-hash: 1.2.0
       create-hmac: 1.1.7
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       hash-base: 3.0.4
       inherits: 2.0.4
       parse-asn1: 5.1.7
@@ -2253,7 +2258,7 @@ packages:
     resolution: {integrity: sha512-mf+TCx8wWc9VpuxfP2ht0iSISLZnt0JgWlrOKZiNqyUZWnjIaCIVNQArMHnCZKfEYRg6IM7A+NeJoN8gf/Ws0A==}
     dependencies:
       bn.js: 4.12.5
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
     dev: true
 
   /create-hash@1.2.0:
@@ -2432,7 +2437,7 @@ packages:
     requiresBuild: true
     dependencies:
       acorn: 7.1.1
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       es6-promise: 4.2.8
       nan: 2.14.0
     optionalDependencies:
@@ -2480,7 +2485,7 @@ packages:
       vue-component-type-helpers: 3.3.11
     dev: false
 
-  /elliptic@6.6.1:
+  /elliptic@6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri):
     resolution: {integrity: sha512-RaddvvMatK2LJHqFJ+YA4WysVN5Ita9E35botqIYspQ4TkRAlCicdzKOjlyv/1Za5RyTNn7di//eEV0uTAfe3g==}
     dependencies:
       bn.js: 4.12.5
@@ -2490,6 +2495,7 @@ packages:
       inherits: 2.0.4
       minimalistic-assert: 1.0.1
       minimalistic-crypto-utils: 1.0.1
+    patched: true
 
   /emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
@@ -4033,7 +4039,7 @@ packages:
       bn.js: 4.12.5
       create-hash: 1.2.0
       drbg.js: 1.0.1
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       nan: 2.14.0
       safe-buffer: 5.2.1
     dev: false
@@ -4044,7 +4050,7 @@ packages:
     engines: {node: '>=18.0.0'}
     requiresBuild: true
     dependencies:
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       node-addon-api: 5.1.0
       node-gyp-build: 4.8.0
     dev: false
@@ -4054,7 +4060,7 @@ packages:
     engines: {node: '>=18.0.0'}
     requiresBuild: true
     dependencies:
-      elliptic: 6.6.1
+      elliptic: 6.6.1(patch_hash=v4jzrxohk77nktvoogfukczyri)
       node-addon-api: 5.1.0
       node-gyp-build: 4.8.0
     dev: false

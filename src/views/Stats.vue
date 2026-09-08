@@ -6,6 +6,8 @@
 
 <script setup lang="ts">
 import 'echarts';
+// ECharts 6 保留原来的深色配色，避免安全升级改变图表外观。
+import 'echarts/theme/dark';
 import { use } from 'echarts/core';
 import { CanvasRenderer } from 'echarts/renderers';
 import { BarChart } from 'echarts/charts';
@@ -39,7 +41,8 @@ const stage1FixedValues: { [key: string]: number } = {
 const option = ref({
     title: {
         text: 'Gas Optimization Statistics',
-        left: 'center'
+        left: 'center',
+        top: 0
     },
     tooltip: {
         trigger: 'axis',
@@ -49,6 +52,7 @@ const option = ref({
     },
     legend: {
         top: '10%',
+        itemGap: 10,
         data: [
             'applicant hash gas',
             'applicant num gas',
@@ -109,7 +113,9 @@ const option = ref({
         {
             type: 'category',
             gridIndex: 0,
+            axisTick: { show: true },
             axisLabel: {
+                color: '#B9B8CE',
                 formatter: function (value: string) {
                     return 'Stage 0';
                 }
@@ -118,7 +124,9 @@ const option = ref({
         {
             type: 'category',
             gridIndex: 1,
+            axisTick: { show: true },
             axisLabel: {
+                color: '#B9B8CE',
                 formatter: function (value: string) {
                     return 'Stage 1';
                 }
@@ -127,7 +135,9 @@ const option = ref({
         {
             type: 'category',
             gridIndex: 2,
+            axisTick: { show: true },
             axisLabel: {
+                color: '#B9B8CE',
                 formatter: function (value: string) {
                     return 'Stage 2';
                 }
@@ -138,16 +148,19 @@ const option = ref({
         {
             type: 'value',
             name: 'Gas',
+            axisLabel: { color: '#B9B8CE' },
             gridIndex: 0
         },
         {
             type: 'value',
             name: 'Gas',
+            axisLabel: { color: '#B9B8CE' },
             gridIndex: 1
         },
         {
             type: 'value',
             name: 'Gas',
+            axisLabel: { color: '#B9B8CE' },
             gridIndex: 2
         }
     ],
@@ -371,7 +384,7 @@ const option = ref({
                 y: 'relay reupload gas 3'
             }
         }
-    ]
+    ].map((series) => ({ ...series, barGap: '20%' }))
 });
 
 const applicantStore = useApplicantStore();

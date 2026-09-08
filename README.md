@@ -23,18 +23,20 @@ See [Vite Configuration Reference](https://vitejs.dev/config/).
 
 ## Project Setup
 
+项目通过 `packageManager` 固定使用 pnpm 8.15.9，保留现有锁文件和安全依赖约束。启用 Corepack，或使用默认开启自动版本管理的 pnpm 10 后，在项目目录直接运行：
+
 ```sh
-npm install
+pnpm install
 ```
 
 ### Compile and Hot-Reload for Development
 
 ```sh
-npm run dev
+pnpm run dev
 ```
 
 ### Type-Check, Compile and Minify for Production
 
 ```sh
-npm run build
+pnpm run build
 ```

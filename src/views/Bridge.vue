@@ -280,7 +280,7 @@ watchEffect(async () => {
                 let writeFair = readOnlyFair.connect(wallet);
                 // 随机数检查
                 let { from: addressA, index, tA, tB } = dataFromApplicant[i];
-                let res = await writeFair.callStatic.UnifiedInspection(addressA, myAddress, index, 1);
+                let res = await writeFair.UnifiedInspection.staticCall(addressA, myAddress, index, 1);
                 if (res === false) {
                     console.log('随机数错误');
                     // 重传

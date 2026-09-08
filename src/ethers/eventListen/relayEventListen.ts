@@ -1,3 +1,5 @@
+import { withEventArgs } from '../eventListener';
+import { toNumber, type Log } from 'ethers';
 import { useLoginStore } from '@/stores/modules/login';
 import { getFairIntGen, getStoreData } from '../contract';
 import { useRelayStore } from '@/stores/modules/relay';
@@ -17,7 +19,6 @@ import { relaySendFinalData } from '@/socket/relayEvent';
 import { getRelay2ValidatorData } from '../chainData/getPre2NextData';
 import { provider } from '../provider';
 import { getAccountInfoByInfoHash, getBlindedFairIntByInfoHash } from '../chainData/getChainData';
-import type { App2RelayEventEvent, Pre2NextEventEvent } from '../types/StoreData';
 import type { TypedListener } from '../types/common';
 import type { ReqHashUploadEvent } from '../types/FairInteger';
 
@@ -33,16 +34,16 @@ export async function backendListen() {
     let { address: anonymousAddress } = allAccountInfo.anonymousAccount;
     let { address: realNameAddress } = allAccountInfo.realNameAccount;
     const fairIntGen = await getFairIntGen();
-    let hashFilter = fairIntGen.filters.ReqHashUpload(null, realNameAddress);
-    fairIntGen.on(hashFilter, async (from, to, infoHash, tA, tB, index) => {
-        // console.log('app -> relay: hash upload, ', from, to, infoHash, tA.toNumber(), tB.toNumber(), uploadTime.toString(), index.toString());
+    let hashFilter = fairIntGen.filters.ReqHashUpload(undefined, realNameAddress);
+    await fairIntGen.on(hashFilter, withEventArgs(async (from, to, infoHash, tA, tB, index) => {
+        // console.log('app -> relay: hash upload, ', from, to, infoHash, toNumber(tA), toNumber(tB), uploadTime.toString(), index.toString());
         console.log('app -> relay: hash upload event detected');
         console.log('data: ', {
             applicant: from,
             relayRealNameAccount: to,
             infoHash,
-            tA: tA.toNumber(),
-            tB: tB.toNumber(),
+            tA: toNumber(tA),
+            tB: toNumber(tB),
             index: index.toString()
         });
         dataFromApplicant.push({
@@ -51,13 +52,13 @@ export async function backendListen() {
             to: to,
             randomNumBefore: null,
             randomText: null,
-            executionTime: tA.toNumber(),
-            tA: tA.toNumber(),
-            tB: tB.toNumber(),
+            executionTime: toNumber(tA),
+            tA: toNumber(tA),
+            tB: toNumber(tB),
             r: null,
             status: 'hash已上传',
             hash: infoHash,
-            index: index.toNumber()
+            index: toNumber(index)
         });
         dataToApplicant.push({
             role: 'relay',
@@ -76,7 +77,7 @@ export async function backendListen() {
         // 自动上传
         // triggerEvents();
         // finally do this by watching dataFromApplicant.length
-    });
+    }));
 
     // store contract事件监听
     const currentBlockNumber = await provider.getBlockNumber();
@@ -87,18 +88,18 @@ export async function backendListen() {
     // relay监听store data, 使用anonymous account
     // applicant -> relay, 此处的applicant是和当前relay对应的temp account
     const storeData = await getStoreData();
-    let app2Relayfilter = storeData.filters.App2RelayEvent(null, anonymousAddress);
+    let app2Relayfilter = storeData.filters.App2RelayEvent(undefined, anonymousAddress);
     // 监听未来的event
-    storeData.on(app2Relayfilter, async (from, relay, data, dataHash, infoHash, event) => {
+    await storeData.on(app2Relayfilter, withEventArgs(async (from, relay, data, dataHash, infoHash, event) => {
         await processApp2RelayEvent(from, relay, data, dataHash, infoHash, event, 'future listening');
-    });
+    }));
 
     // next relay listening: current relay -> next relay, using real name account
-    let pre2Nextfilter = storeData.filters.Pre2NextEvent(null, anonymousAddress);
+    let pre2Nextfilter = storeData.filters.Pre2NextEvent(undefined, anonymousAddress);
     // 监听未来的event
-    storeData.on(pre2Nextfilter, async (from, relay, data, tokenHash, dataHash, event) => {
+    await storeData.on(pre2Nextfilter, withEventArgs(async (from, relay, data, tokenHash, dataHash, event) => {
         await processPre2NextEvent(from, relay, data, tokenHash, dataHash, event, 'future listening');
-    });
+    }));
 
     // 当前block向前20个, 避免错过
     const pastEvents1 = await storeData.queryFilter(app2Relayfilter, fromBlock, currentBlockNumber);
@@ -156,7 +157,7 @@ async function processApp2RelayEvent(
     data: string,
     dataHash: string,
     infoHash: string,
-    event: App2RelayEventEvent,
+    event: Pick<Log, 'transactionHash'>,
     place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到app to next relay消息 in ${place}, data:`);
@@ -195,7 +196,7 @@ async function processPre2NextEvent(
     data: string,
     tokenHash: string,
     dataHash: string,
-    event: Pre2NextEventEvent,
+    event: Pick<Log, 'transactionHash'>,
     place: 'future listening' | 'past listening' | 'current listening'
 ) {
     console.log(`监听到pre relay to next relay消息 in ${place}, data:`);
@@ -379,15 +380,15 @@ function saveData2NextRelay(appTempAccount: string, from: string, data: AppToRel
     // }
 }
 
-let processFairIntNumReq: TypedListener<ReqHashUploadEvent> = async (from, to, infoHashA, tA, tB, index, event) => {
+let processFairIntNumReq: TypedListener<ReqHashUploadEvent.Event> = async (from, to, infoHashA, tA, tB, index, event) => {
     let { dataFromApplicant, dataToApplicant } = useRelayStore();
     console.log('app -> relay: hash upload event detected');
     console.log('data: ', {
         applicant: from,
         relayRealNameAccount: to,
         infoHashA,
-        tA: tA.toNumber(),
-        tB: tB.toNumber(),
+        tA: toNumber(tA),
+        tB: toNumber(tB),
         index: index.toString()
     });
     dataFromApplicant.push({
@@ -396,13 +397,13 @@ let processFairIntNumReq: TypedListener<ReqHashUploadEvent> = async (from, to, i
         to: to,
         randomNumBefore: null,
         randomText: null,
-        executionTime: tA.toNumber(),
-        tA: tA.toNumber(),
-        tB: tB.toNumber(),
+        executionTime: toNumber(tA),
+        tA: toNumber(tA),
+        tB: toNumber(tB),
         r: null,
         status: 'hash已上传',
         hash: infoHashA,
-        index: index.toNumber(),
+        index: toNumber(index),
         isReupload: false
     });
     dataToApplicant.push({

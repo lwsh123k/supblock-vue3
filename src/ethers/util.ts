@@ -15,7 +15,7 @@ import { keccak256 as keccak256Hash } from 'js-sha3';
  * @returns 返回带0x前缀的hash
  */
 export function getHash(ni: number, ta: number, tb: number, ri: string) {
-    const hash = ethers.utils.solidityKeccak256(['uint256', 'uint256', 'uint256', 'uint256'], [ni, ta, tb, ri]);
+    const hash = ethers.solidityPackedKeccak256(['uint256', 'uint256', 'uint256', 'uint256'], [ni, ta, tb, ri]);
     return hash;
 }
 
@@ -28,7 +28,7 @@ export async function getSign(data: any, privateKey: string) {
 
 // 计算地址
 export function getAddress(privateKey: string) {
-    let address = ethers.utils.computeAddress(privateKey);
+    let address = ethers.computeAddress(privateKey);
     return address;
 }
 
@@ -37,10 +37,10 @@ export function generateRandomBytes(length: number) {
     let randomBytes;
     do {
         // 返回值类型为 Uint8Array
-        randomBytes = ethers.utils.randomBytes(length);
+        randomBytes = ethers.randomBytes(length);
     } while (!randomBytes.some((x) => x !== 0)); // 数组存在x不为0,即可退出while循环
     // 将字节数组转换为十六进制字符串
-    return ethers.utils.hexlify(randomBytes);
+    return ethers.hexlify(randomBytes);
 }
 
 export function getRandom(tA: number, tB: number) {

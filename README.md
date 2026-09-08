@@ -40,3 +40,12 @@ pnpm run dev
 ```sh
 pnpm run build
 ```
+
+### ethers Compatibility Checks
+
+安装时自动生成 ethers 6 合约类型。以下回归仅使用合成数据，不连接区块链：
+
+```sh
+node scripts/check-elliptic-patch.cjs
+node scripts/check-ethers-events.cjs
+```

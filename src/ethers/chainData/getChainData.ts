@@ -1,3 +1,4 @@
+import { toNumber } from 'ethers';
 import { getFairIntGen } from '../contract';
 
 export async function getAccountInfoByContract(index: number) {
@@ -17,7 +18,7 @@ export async function getAccountInfoByInfoHash(infoHash: string) {
 export async function getBlindedFairIntByInfoHash(infoHash: string, b: number) {
     let fairIntGen = await getFairIntGen();
     let res = await fairIntGen.getNumByHash(infoHash);
-    if (res.reuploadFlags === 1) return res.niA.toNumber();
-    else if (res.reuploadFlags === 2) return res.niB.toNumber();
-    else return ((res.niA.toNumber() + res.niB.toNumber() + b) % 99) + 1;
+    if (res.reuploadFlags === 1n) return toNumber(res.niA);
+    else if (res.reuploadFlags === 2n) return toNumber(res.niB);
+    else return ((toNumber(res.niA) + toNumber(res.niB) + b) % 99) + 1;
 }

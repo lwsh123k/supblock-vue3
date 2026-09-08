@@ -1,3 +1,5 @@
+import { withEventArgs } from './eventListener';
+import { toNumber, toBeHex } from 'ethers';
 import { getFairIntGen } from './contract';
 import type { TypedListener } from './types/common';
 import type {
@@ -30,12 +32,12 @@ export async function listenResHash(
     timeout: number = 30000 + 10000
 ): Promise<HashResult> {
     const fairIntGen = await getFairIntGen();
-    let listenser: TypedListener<ResHashUploadEvent>;
+    let listenser: TypedListener<ResHashUploadEvent.Event>;
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.ResHashUpload(addressB, addressA),
             timeoutId: NodeJS.Timeout;
         // 存储监听调用函数的引用
-        listenser = async (from, to, infoHash, tA, tB, index) => {
+        listenser = withEventArgs<ResHashUploadEvent.Event>(async (from, to, infoHash, tA, tB, index) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
@@ -45,7 +47,7 @@ export async function listenResHash(
                 tB: tB.toString(),
                 index: index.toString()
             });
-        };
+        });
         timeoutId = setTimeout(() => {
             // 如果30s + 10s没有监听到对方上传hash, 需要移除对ni ri的监听, 移除ni ri超时监听
             fairIntGen.off(filter, listenser); // 只关闭当前的
@@ -53,7 +55,10 @@ export async function listenResHash(
         }, timeout);
 
         // 监听部分
-        fairIntGen.once(filter, listenser);
+        fairIntGen.once(filter, listenser).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 }
 
@@ -69,28 +74,31 @@ export async function stopableListenResNum(
     let timeoutId: NodeJS.Timeout;
     let resFilter = fairIntGen.filters.ResInfoUpload(resAddress, reqAddress);
     let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
-    let callback: TypedListener<ResInfoUploadEvent>;
+    let callback: TypedListener<ResInfoUploadEvent.Event>;
     const p = new Promise<NumResult>((resolve, reject) => {
         rejectFunc = reject;
         // 存储引用
-        callback = async (from, to, ni, ri, tA, tB, hashA, hashB) => {
+        callback = withEventArgs<ResInfoUploadEvent.Event>(async (from, to, ni, ri, tA, tB, hashA, hashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
                 to,
-                ni: ni.toNumber(),
-                ri: ri.toHexString(),
-                t: tB.toNumber(),
+                ni: toNumber(ni),
+                ri: toBeHex(ri),
+                t: toNumber(tB),
                 hashA,
                 hashB
             });
-        };
+        });
 
         timeoutId = setTimeout(async () => {
             fairIntGen.off(resFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload random num'));
         }, timeout);
-        fairIntGen.once(resFilter, callback);
+        fairIntGen.once(resFilter, callback).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 
     // 使用promise1拒绝promise2
@@ -109,27 +117,30 @@ export async function listenReqNum(
     timeout: number = 30000 + 10000
 ): Promise<NumResult> {
     const fairIntGen = await getFairIntGen();
-    let callback: TypedListener<ReqInfoUploadEvent>, timeoutId: NodeJS.Timeout;
+    let callback: TypedListener<ReqInfoUploadEvent.Event>, timeoutId: NodeJS.Timeout;
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.ReqInfoUpload(reqAddress, resAddress);
-        callback = async (from, to, ni, ri, tA, tB, hashA, hashB) => {
+        callback = withEventArgs<ReqInfoUploadEvent.Event>(async (from, to, ni, ri, tA, tB, hashA, hashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from: from,
                 to: to,
-                ni: ni.toNumber(),
-                ri: ri.toHexString(),
-                t: tA.toNumber(),
+                ni: toNumber(ni),
+                ri: toBeHex(ri),
+                t: toNumber(tA),
                 hashA,
                 hashB
             });
-        };
+        });
 
         timeoutId = setTimeout(async () => {
             fairIntGen.off(filter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload random num'));
         }, timeout);
-        fairIntGen.once(filter, callback);
+        fairIntGen.once(filter, callback).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 }
 
@@ -140,25 +151,28 @@ export async function listenReqReupload(
     timeout: number = 30000 + 30000 + 20000
 ): Promise<ReuploadResult> {
     const fairIntGen = await getFairIntGen();
-    let callback: TypedListener<ReqReuploadNumEvent>, timeoutId: NodeJS.Timeout;
+    let callback: TypedListener<ReqReuploadNumEvent.Event>, timeoutId: NodeJS.Timeout;
     return new Promise((resolve, reject) => {
         let filter = fairIntGen.filters.ReqReuploadNum(reqAddress, resAddress);
-        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+        callback = withEventArgs<ReqReuploadNumEvent.Event>(async (from, to, ni, ri, originalHashA, originalHashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from: from,
                 to: to,
-                ni: ni.toNumber(),
-                ri: ri.toHexString(),
+                ni: toNumber(ni),
+                ri: toBeHex(ri),
                 hashB: originalHashB.toString()
             });
-        };
+        });
 
         timeoutId = setTimeout(async () => {
             fairIntGen.off(filter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload reupload random num'));
         }, timeout);
-        fairIntGen.once(filter, callback);
+        fairIntGen.once(filter, callback).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 }
 
@@ -173,24 +187,27 @@ export async function stopableListenReqReupload(
     let timeoutId: NodeJS.Timeout;
     let reqFilter = fairIntGen.filters.ReqReuploadNum(reqAddress, resAddress);
     let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
-    let callback: TypedListener<ReqReuploadNumEvent>;
+    let callback: TypedListener<ReqReuploadNumEvent.Event>;
     const p = new Promise<ReuploadResult>((resolve, reject) => {
         rejectFunc = reject;
         timeoutId = setTimeout(async () => {
             fairIntGen.off(reqFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload reupload random num'));
         }, timeout);
-        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+        callback = withEventArgs<ReqReuploadNumEvent.Event>(async (from, to, ni, ri, originalHashA, originalHashB) => {
             clearTimeout(timeoutId);
             resolve({
                 from,
                 to,
-                ni: ni.toNumber(),
-                ri: ri.toHexString(),
+                ni: toNumber(ni),
+                ri: toBeHex(ri),
                 hashB: originalHashB.toString()
             });
-        };
-        fairIntGen.once(reqFilter, callback);
+        });
+        fairIntGen.once(reqFilter, callback).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 
     // 使用promise1拒绝promise2
@@ -215,7 +232,7 @@ export async function stopableListenResReupload(
     let timeoutId: NodeJS.Timeout;
     let resFilter = fairIntGen.filters.ResReuploadNum(resAddress, reqAddress);
     let rejectFunc: (reason?: any) => void; // 记录reject, 之后使用
-    let callback: TypedListener<ResReuploadNumEvent>;
+    let callback: TypedListener<ResReuploadNumEvent.Event>;
 
     console.log(`开始监听重传事件: from=${resAddress}, to=${reqAddress}`);
 
@@ -226,18 +243,21 @@ export async function stopableListenResReupload(
             fairIntGen.off(resFilter, callback); // 如果没有监听到(超时), 则移除事件监听器
             reject(new Error('not upload reupload random num'));
         }, timeout);
-        callback = async (from, to, ni, ri, originalHashA, originalHashB) => {
+        callback = withEventArgs<ResReuploadNumEvent.Event>(async (from, to, ni, ri, originalHashA, originalHashB) => {
             console.log(`收到重传事件: from=${from}, to=${to}, ni=${ni}`);
             clearTimeout(timeoutId);
             resolve({
                 from,
                 to,
-                ni: ni.toNumber(),
-                ri: ri.toHexString(),
+                ni: toNumber(ni),
+                ri: toBeHex(ri),
                 hashB: originalHashB.toString()
             });
-        };
-        fairIntGen.once(resFilter, callback);
+        });
+        fairIntGen.once(resFilter, callback).catch((error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+        });
     });
 
     // 使用promise1拒绝promise2

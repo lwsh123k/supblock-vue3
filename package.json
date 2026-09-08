@@ -14,12 +14,10 @@
         "preview": "vite preview",
         "build-only": "vite build",
         "type-check": "vue-tsc --build --force",
-        "generate-types": "npx typechain --target=ethers-v5 --out-dir src/ethers/types 'src/ethers/abi/*.json'",
-        "postinstall": "npm run generate-types"
+        "generate-types": "typechain --target=ethers-v6 --out-dir src/ethers/types 'src/ethers/abi/*.json'",
+        "postinstall": "pnpm run generate-types"
     },
     "dependencies": {
-        "@ethersproject/abi": "^5.8.0",
-        "@ethersproject/providers": "^5.8.0",
         "@noble/hashes": "^1.3.3",
         "@reactivex/rxjs": "^6.6.7",
         "axios": "^1.20.0",
@@ -28,7 +26,7 @@
         "ecurve": "^1.0.6",
         "element-plus": "^2.14.5",
         "eth-crypto": "^2.8.0",
-        "ethers": "^5.8.0",
+        "ethers": "^6.17.0",
         "js-sha3": "^0.9.3",
         "keccak": "^3.0.4",
         "pinia": "^2.1.7",
@@ -41,7 +39,7 @@
     },
     "devDependencies": {
         "@tsconfig/node18": "^18.2.2",
-        "@typechain/ethers-v5": "^11.1.2",
+        "@typechain/ethers-v6": "^0.5.1",
         "@types/bigi": "^1.4.5",
         "@types/bn.js": "^5.1.1",
         "@types/ecurve": "^1.0.3",

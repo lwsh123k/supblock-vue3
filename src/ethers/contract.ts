@@ -1,10 +1,7 @@
-import { ethers } from 'ethers';
 import { provider } from './provider';
 // import { fairIntGenAddress } from './contract.json';
-import fairIntGenAbi from './abi/FairInteger.json';
 import { getContractAddress } from '@/api';
 import { FairInteger__factory, StoreData__factory } from './types';
-import type { FairInteger } from './types'; // 仅导入类型
 
 // 返回合约实例对象
 
@@ -12,10 +9,7 @@ import type { FairInteger } from './types'; // 仅导入类型
 export async function getFairIntGen() {
     // 避免每次都要设置地址, 所以从服务器获取地址
     let address = (await getContractAddress()).FairInteger;
-    // 两种实例化方式
     return FairInteger__factory.connect(address, provider);
-    // ts在引入json时, 自动将字符串转化为了对象
-    return new ethers.Contract(address, JSON.stringify(fairIntGenAbi), provider) as FairInteger;
 }
 
 // 数据存储合约实例
@@ -33,6 +27,7 @@ export async function getCurrentBlockTime() {
     const block = await provider.getBlock(blockNumber);
 
     // 区块的时间戳是Unix时间戳，单位是秒
+    if (!block) throw new Error(`Block ${blockNumber} is unavailable`);
     const blockTimestamp = block.timestamp;
 
     // 将Unix时间戳转换为JavaScript的Date对象

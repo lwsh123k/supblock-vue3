@@ -118,7 +118,7 @@ import { getHash, getRandom } from '@/ethers/util';
 import { appSendInitData, send2Extension } from '@/socket/applicantEvent';
 import { useApplicantStore } from '@/stores/modules/applicant';
 import { useLoginStore } from '@/stores/modules/login';
-import { ethers, Wallet } from 'ethers';
+import { toNumber, Wallet } from 'ethers';
 import { computed, onBeforeMount, onMounted, reactive, readonly, ref, watch, watchEffect } from 'vue';
 import type { DataItem, PublicKey, RelayAccount, toApplicantSigned } from './types';
 import { appSendFinalData } from '@/socket/applicantEvent';
@@ -204,9 +204,9 @@ async function uploadHashAndListen() {
 
     // 生成随机数
     let result = await writeFair.getReqExecuteTime(addressB);
-    let tA = result[0].toNumber();
-    let tB = result[1].toNumber();
-    let dataIndex = result[2].toNumber(); // 插入位置的下标
+    let tA = toNumber(result[0]);
+    let tB = toNumber(result[1]);
+    let dataIndex = toNumber(result[2]); // 插入位置的下标
     let { ni, ri, hash } = getRandom(tA, tB);
     datas[step][0].address = addressA;
     datas[step][0].executionTime = tA.toString(); // execution time应该是0, 如果在使用新选择的temp account

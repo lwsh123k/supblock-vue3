@@ -74,7 +74,7 @@ export const useLoginStore = defineStore('login', () => {
     async function processAccount(privateKey: string[]) {
         // 使account变为{key, address}的格式
         allAccountInfo.accounts = privateKey.map((item) => {
-            return { key: item, address: ethers.utils.computeAddress(item) };
+            return { key: item, address: ethers.computeAddress(item) };
         });
         allAccountInfo.realNameAccount = allAccountInfo.accounts[0];
         allAccountInfo.anonymousAccount = allAccountInfo.accounts[1];

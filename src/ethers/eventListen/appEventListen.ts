@@ -1,3 +1,4 @@
+import { withEventArgs } from '../eventListener';
 import { useLoginStore } from '@/stores/modules/login';
 import type { RelayResData } from '../chainData/chainDataType';
 import { getStoreData } from '../contract';
@@ -14,10 +15,10 @@ export async function listenRelayRes(appTempAccounts: string[]) {
     let { chainNumber, chainLength } = useLoginStore();
     let { relays, allInfoHash } = useApplicantStore();
 
-    let RelayResFilter = storeData.filters.RelayResEvidenceEvent(null, null);
-    storeData.on(
+    let RelayResFilter = storeData.filters.RelayResEvidenceEvent();
+    await storeData.on(
         RelayResFilter,
-        async (
+        withEventArgs(async (
             relayAnonymousAccount,
             appTempAccount,
             data,
@@ -72,6 +73,6 @@ export async function listenRelayRes(appTempAccounts: string[]) {
                 `relay -> app(update next relay real name account in ethersjs), chain index: ${chainIndex}, next relay index: ${relayIndex + 1}, next relay real name account: ${nextRelayRealnameAccount}`
             );
             relays[chainIndex][relayIndex + 1].realNameAccount = nextRelayRealnameAccount;
-        }
+        })
     );
 }

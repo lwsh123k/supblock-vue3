@@ -122,6 +122,6 @@ export function getApp2ReceivedData(chainIndex: number, relayIndex: number) {
     return data;
 }
 export function getPubkeyFromKey(privatekay: string) {
-    let publicKey = new ethers.Wallet(privatekay).publicKey;
+    let publicKey = new ethers.Wallet(privatekay).signingKey.publicKey;
     return publicKey;
 }
